@@ -145,7 +145,17 @@ downloadBtn.addEventListener('click', async () => {
 
     // 获取当前网站域名用于创建文件夹
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const hostname = new URL(tab.url).hostname;
+
+    // 安全处理 tab.url，避免 chrome:// 等特殊页面抛出异常
+    let hostname = 'unknown';
+    try {
+      if (tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+        hostname = new URL(tab.url).hostname;
+      }
+    } catch (error) {
+      console.warn('无法解析 URL:', tab.url);
+    }
+
     const dateStr = new Date().toISOString().split('T')[0];
     const folderName = `${hostname}_${dateStr}`;
 
@@ -157,7 +167,12 @@ downloadBtn.addEventListener('click', async () => {
     });
 
     if (response.success) {
-      status.textContent = `成功下载 ${selectedSet.size} 个${currentTab === 'images' ? '图片' : '视频'}`;
+      const itemType = currentTab === 'images' ? '图片' : '视频';
+      if (response.failed > 0) {
+        status.textContent = `下载完成：${response.downloaded} 个${itemType}成功，${response.failed} 个失败`;
+      } else {
+        status.textContent = `成功下载 ${response.downloaded} 个${itemType}`;
+      }
       selectedSet.clear();
       updateSelection();
     } else {
@@ -203,6 +218,7 @@ function renderImages() {
 
     const item = document.createElement('div');
     item.className = 'image-item';
+    item.dataset.url = img.url; // 存储 URL 用于选择状态同步
     if (selectedImages.has(img.url)) {
       item.classList.add('selected');
     }
@@ -268,6 +284,7 @@ function renderVideos() {
 
     const item = document.createElement('div');
     item.className = 'video-item';
+    item.dataset.url = video.url; // 存储 URL 用于选择状态同步
     if (selectedVideos.has(video.url)) {
       item.classList.add('selected');
     }
@@ -312,13 +329,12 @@ function renderVideos() {
 // 更新选中状态
 function updateSelection() {
   const selectedSet = currentTab === 'images' ? selectedImages : selectedVideos;
-  const extractedItems = currentTab === 'images' ? extractedImages : extractedVideos;
   const gridClass = currentTab === 'images' ? '.image-item' : '.video-item';
 
-  // 更新视觉状态
-  document.querySelectorAll(gridClass).forEach((item, index) => {
-    const itemData = extractedItems[index];
-    if (selectedSet.has(itemData.url)) {
+  // 更新视觉状态 - 使用 data-url 而非索引
+  document.querySelectorAll(gridClass).forEach((item) => {
+    const url = item.dataset.url;
+    if (selectedSet.has(url)) {
       item.classList.add('selected');
     } else {
       item.classList.remove('selected');

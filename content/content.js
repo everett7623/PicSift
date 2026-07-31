@@ -27,7 +27,9 @@ async function extractImages(filters) {
   // 1. 提取 <img> 标签图片
   const imgElements = document.querySelectorAll('img');
   for (const img of imgElements) {
-    const url = getHighResUrl(img.src || img.dataset.src);
+    // 使用 getAttribute 避免 img.src 返回页面 URL
+    const rawSrc = img.getAttribute('src') || img.getAttribute('data-src') || img.dataset.src;
+    const url = rawSrc ? getHighResUrl(rawSrc) : null;
     if (url && !seenUrls.has(url)) {
       const dimensions = await getImageDimensions(url);
       if (dimensions && passFilters(dimensions, filters)) {
@@ -46,19 +48,22 @@ async function extractImages(filters) {
   const elementsWithBg = document.querySelectorAll('[style*="background"]');
   for (const el of elementsWithBg) {
     const bgStyle = window.getComputedStyle(el).backgroundImage;
-    const urlMatch = bgStyle.match(/url\(['"]?(.*?)['"]?\)/);
-    if (urlMatch && urlMatch[1]) {
-      const url = getHighResUrl(urlMatch[1]);
-      if (url && !seenUrls.has(url)) {
-        const dimensions = await getImageDimensions(url);
-        if (dimensions && passFilters(dimensions, filters)) {
-          images.push({
-            url,
-            width: dimensions.width,
-            height: dimensions.height,
-            type: 'background'
-          });
-          seenUrls.add(url);
+    // 使用 matchAll 提取所有 url()，支持多背景图
+    const urlMatches = bgStyle.matchAll(/url\(['"]?(.*?)['"]?\)/g);
+    for (const urlMatch of urlMatches) {
+      if (urlMatch[1]) {
+        const url = getHighResUrl(urlMatch[1]);
+        if (url && !seenUrls.has(url)) {
+          const dimensions = await getImageDimensions(url);
+          if (dimensions && passFilters(dimensions, filters)) {
+            images.push({
+              url,
+              width: dimensions.width,
+              height: dimensions.height,
+              type: 'background'
+            });
+            seenUrls.add(url);
+          }
         }
       }
     }
@@ -433,9 +438,10 @@ function getHighResUrl(url) {
   }
 
   // 淘宝/天猫图片处理
-  if (url.includes('taobaocdn.com') || url.includes('alicdn.com')) {
-    // 移除尺寸参数
-    cleanUrl = url.split('_')[0] + url.substring(url.lastIndexOf('.'));
+  if (url.includes('taobaocdn.com')) {
+    // 移除尺寸参数，如 _400x400.jpg
+    cleanUrl = cleanUrl.replace(/_\d+x\d+\./, '.');
+    cleanUrl = cleanUrl.split('?')[0];
   }
 
   // 京东图片处理

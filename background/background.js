@@ -2,14 +2,22 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'downloadImages') {
     downloadImages(request.items, request.folderName)
-      .then(() => sendResponse({ success: true }))
+      .then(result => sendResponse({
+        success: true,
+        downloaded: result.success,
+        failed: result.failed
+      }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // 保持消息通道开启
   }
 
   if (request.action === 'downloadVideos') {
     downloadVideos(request.items, request.folderName)
-      .then(() => sendResponse({ success: true }))
+      .then(result => sendResponse({
+        success: true,
+        downloaded: result.success,
+        failed: result.failed
+      }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
@@ -19,8 +27,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * 批量下载图片
  * @param {Array<string>} imageUrls - 图片 URL 列表
  * @param {string} folderName - 文件夹名称
+ * @returns {Promise<Object>} {success: number, failed: number}
  */
 async function downloadImages(imageUrls, folderName) {
+  let successCount = 0;
+  let failedCount = 0;
+
   for (let i = 0; i < imageUrls.length; i++) {
     const url = imageUrls[i];
     const filename = generateFilename(url, i, folderName, 'images');
@@ -32,9 +44,10 @@ async function downloadImages(imageUrls, folderName) {
         conflictAction: 'uniquify', // 文件名冲突时自动重命名
         saveAs: false // 不显示保存对话框
       });
+      successCount++;
     } catch (error) {
       console.error(`下载失败: ${url}`, error);
-      // 继续下载下一张
+      failedCount++;
     }
 
     // 避免下载过快导致浏览器卡顿
@@ -42,14 +55,20 @@ async function downloadImages(imageUrls, folderName) {
       await sleep(100);
     }
   }
+
+  return { success: successCount, failed: failedCount };
 }
 
 /**
  * 批量下载视频
  * @param {Array<string>} videoUrls - 视频 URL 列表
  * @param {string} folderName - 文件夹名称
+ * @returns {Promise<Object>} {success: number, failed: number}
  */
 async function downloadVideos(videoUrls, folderName) {
+  let successCount = 0;
+  let failedCount = 0;
+
   for (let i = 0; i < videoUrls.length; i++) {
     const url = videoUrls[i];
     const filename = generateFilename(url, i, folderName, 'videos');
@@ -61,8 +80,10 @@ async function downloadVideos(videoUrls, folderName) {
         conflictAction: 'uniquify',
         saveAs: false
       });
+      successCount++;
     } catch (error) {
       console.error(`下载视频失败: ${url}`, error);
+      failedCount++;
     }
 
     // 视频文件较大，延迟更长
@@ -70,6 +91,8 @@ async function downloadVideos(videoUrls, folderName) {
       await sleep(200);
     }
   }
+
+  return { success: successCount, failed: failedCount };
 }
 
 /**
@@ -86,7 +109,7 @@ function generateFilename(url, index, folderName, type = 'images') {
   const urlPath = url.split('?')[0]; // 去除查询参数
 
   if (type === 'images') {
-    const match = urlPath.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+    const match = urlPath.match(/\.(jpg|jpeg|png|webp|gif|svg|bmp|tiff?|avif)$/i);
     if (match) {
       ext = match[1].toLowerCase();
     }
