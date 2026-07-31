@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PicSift</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>PicSift</h1>
+      <p class="subtitle">商品图片提取器</p>
+    </header>
+
+    <div class="controls">
+      <div class="tab-switcher">
+        <button id="tabImages" class="tab-btn active">图片</button>
+        <button id="tabVideos" class="tab-btn">视频</button>
+      </div>
+
+      <div id="imageFilters" class="filter-section">
+        <div class="filter-group">
+          <label>
+            <span>最小宽度：</span>
+            <input type="number" id="minWidth" value="800" min="0">
+            <span>px</span>
+          </label>
+          <label>
+            <span>最小高度：</span>
+            <input type="number" id="minHeight" value="800" min="0">
+            <span>px</span>
+          </label>
+        </div>
+
+        <div class="ratio-filter">
+          <label><input type="checkbox" id="filterSquare"> 方图</label>
+          <label><input type="checkbox" id="filterLandscape"> 横图</label>
+          <label><input type="checkbox" id="filterPortrait"> 竖图</label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="extractBtn" class="primary">提取图片</button>
+        <button id="extractVideosBtn" class="primary" style="display:none;">提取视频</button>
+        <button id="selectAllBtn">全选</button>
+        <button id="deselectAllBtn">取消全选</button>
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div id="imageGrid" class="image-grid">
+      <!-- 动态插入图片 -->
+    </div>
+
+    <div id="videoGrid" class="video-grid" style="display:none;">
+      <!-- 动态插入视频 -->
+    </div>
+
+    <div class="footer-actions">
+      <button id="downloadBtn" class="download-btn" disabled>
+        下载选中内容 (<span id="selectedCount">0</span>)
+      </button>
+    </div>
+
+    <footer style="text-align: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid #1f2937; font-size: 11px; color: #6b7280;">
+      Made by <a href="https://everettlabs.dev/" target="_blank" style="color: #34D399; text-decoration: none;">Everett Labs</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

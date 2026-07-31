@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PicSift - 插件加载指南</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+      line-height: 1.6;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #34D399;
+      margin-top: 0;
+    }
+    h2 {
+      color: #333;
+      border-bottom: 2px solid #34D399;
+      padding-bottom: 10px;
+    }
+    .step {
+      background: #f9fafb;
+      border-left: 4px solid #34D399;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    .step-number {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      background: #34D399;
+      color: white;
+      text-align: center;
+      line-height: 30px;
+      border-radius: 50%;
+      margin-right: 10px;
+      font-weight: bold;
+    }
+    code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    .url-box {
+      background: #090B10;
+      color: #34D399;
+      padding: 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin: 10px 0;
+    }
+    .test-sites {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .test-site {
+      background: #f9fafb;
+      padding: 15px;
+      border-radius: 6px;
+      border: 2px solid #e5e7eb;
+    }
+    .test-site:hover {
+      border-color: #34D399;
+    }
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+    .checklist li {
+      padding: 8px 0;
+      padding-left: 30px;
+      position: relative;
+    }
+    .checklist li:before {
+      content: '□';
+      position: absolute;
+      left: 0;
+      color: #34D399;
+      font-size: 20px;
+    }
+    .success {
+      color: #10b981;
+      font-weight: bold;
+    }
+    .warning {
+      color: #f59e0b;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎯 PicSift 插件加载指南</h1>
+    <p>按照以下步骤将 PicSift 加载到 Chrome 浏览器中</p>
+  </div>
+
+  <div class="card">
+    <h2>步骤 1：打开 Chrome 扩展页面</h2>
+    <div class="step">
+      <span class="step-number">1</span>
+      在 Chrome 地址栏输入以下地址并回车：
+      <div class="url-box">chrome://extensions/</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>步骤 2：开启开发者模式</h2>
+    <div class="step">
+      <span class="step-number">2</span>
+      在扩展页面右上角，找到 <strong>"开发者模式"</strong> 开关并开启
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>步骤 3：加载插件</h2>
+    <div class="step">
+      <span class="step-number">3</span>
+      点击 <strong>"加载已解压的扩展程序"</strong> 按钮
+    </div>
+    <div class="step">
+      <span class="step-number">4</span>
+      选择以下目录：
+      <div class="url-box">D:\EvenFrank\Workspace\Plugins\Google\PicSift</div>
+    </div>
+    <div class="step">
+      <span class="step-number">5</span>
+      点击 <strong>"选择文件夹"</strong>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>✅ 加载成功标志</h2>
+    <ul class="checklist">
+      <li>插件卡片出现在扩展列表中</li>
+      <li>显示名称：<code>PicSift - 商品图片提取器</code></li>
+      <li>版本号：<code>1.0.0</code></li>
+      <li>浏览器工具栏出现绿色 P 图标</li>
+      <li>没有红色错误提示</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>🧪 测试插件</h2>
+    <p>访问以下任意网站进行测试：</p>
+
+    <div class="test-sites">
+      <div class="test-site">
+        <strong>阿里巴巴国际站</strong><br>
+        <a href="https://www.alibaba.com" target="_blank">alibaba.com</a><br>
+        <small>测试图片提取</small>
+      </div>
+
+      <div class="test-site">
+        <strong>1688</strong><br>
+        <a href="https://www.1688.com" target="_blank">1688.com</a><br>
+        <small>测试图片+视频</small>
+      </div>
+
+      <div class="test-site">
+        <strong>中国制造网</strong><br>
+        <a href="https://www.made-in-china.com" target="_blank">made-in-china.com</a><br>
+        <small class="success">✓ 已优化</small>
+      </div>
+
+      <div class="test-site">
+        <strong>淘宝</strong><br>
+        <a href="https://www.taobao.com" target="_blank">taobao.com</a><br>
+        <small>测试图片提取</small>
+      </div>
+
+      <div class="test-site">
+        <strong>京东</strong><br>
+        <a href="https://www.jd.com" target="_blank">jd.com</a><br>
+        <small>测试图片提取</small>
+      </div>
+
+      <div class="test-site">
+        <strong>天猫</strong><br>
+        <a href="https://www.tmall.com" target="_blank">tmall.com</a><br>
+        <small>测试图片提取</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📋 测试清单</h2>
+    <ul class="checklist">
+      <li>打开商品详情页</li>
+      <li>点击浏览器工具栏的 PicSift 图标</li>
+      <li>点击"提取图片"按钮</li>
+      <li>查看提取到的图片数量</li>
+      <li>勾选部分图片</li>
+      <li>点击"下载选中内容"</li>
+      <li>检查下载文件夹是否创建</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>❌ 遇到问题？</h2>
+    <div class="step">
+      <strong class="warning">问题 1：插件无法加载</strong><br>
+      检查目录路径是否正确，确认包含 <code>manifest.json</code> 文件
+    </div>
+    <div class="step">
+      <strong class="warning">问题 2：点击图标无反应</strong><br>
+      右键点击插件图标 → 选择"检查弹出内容" → 查看 Console 错误
+    </div>
+    <div class="step">
+      <strong class="warning">问题 3：提取不到图片</strong><br>
+      在商品页按 F12 → Console 标签 → 查看错误日志
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🎉 祝贺！</h2>
+    <p>如果所有测试通过，PicSift 已成功安装并可以使用。</p>
+    <p>查看完整文档：<code>D:\EvenFrank\Workspace\Plugins\Google\PicSift\TESTING.md</code></p>
+  </div>
+</body>
+</html>

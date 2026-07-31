@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>生成图标</title>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const sizes = [16, 32, 48, 128];
+sizes.forEach(size => {
+  const canvas = document.getElementById('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  
+  // 背景
+  ctx.fillStyle = '#090B10';
+  ctx.fillRect(0, 0, size, size);
+  
+  // 主色圆形
+  ctx.fillStyle = '#34D399';
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, size/3, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 字母 P
+  ctx.fillStyle = '#090B10';
+  ctx.font = `bold ${size * 0.5}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('P', size/2, size/2);
+  
+  // 下载
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `icon${size}.png`;
+    a.click();
+  });
+});
+</script>
+</body>
+</html>
