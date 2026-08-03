@@ -7,11 +7,14 @@ const ARCHIVE_FETCH_CONCURRENCY = 4;
 const ARCHIVE_FETCH_TIMEOUT_MS = 20000;
 const MAX_ARCHIVE_BYTES = 256 * 1024 * 1024;
 const ARCHIVE_URL_LIFETIME_MS = 5 * 60 * 1000;
+const DEFAULT_RESULT_IMAGE_FILTERS = Object.freeze({ minSize: 0, ratio: 'all' });
 const CRC32_TABLE = createCrc32Table();
 let sourceTabId = getSourceTabId();
 
+let allExtractedImages = [];
 let extractedImages = [];
 let extractedVideos = [];
+let resultImageFilters = { ...DEFAULT_RESULT_IMAGE_FILTERS };
 const selectedImages = new Set();
 const selectedVideos = new Set();
 let currentTab = 'images';
@@ -34,6 +37,8 @@ const elements = {
   tabImages: document.getElementById('tabImages'),
   tabVideos: document.getElementById('tabVideos'),
   imageFilters: document.getElementById('imageFilters'),
+  resultFilters: document.getElementById('resultFilters'),
+  resultFilterCount: document.getElementById('resultFilterCount'),
   imageTabCount: document.getElementById('imageTabCount'),
   videoTabCount: document.getElementById('videoTabCount'),
   versionBadge: document.getElementById('versionBadge'),
@@ -54,6 +59,9 @@ const elements = {
   filterLandscape: document.getElementById('filterLandscape'),
   filterPortrait: document.getElementById('filterPortrait')
 };
+
+const resultSizeButtons = Array.from(elements.resultFilters.querySelectorAll('[data-result-size]'));
+const resultRatioButtons = Array.from(elements.resultFilters.querySelectorAll('[data-result-ratio]'));
 
 elements.tabImages.addEventListener('click', () => switchTab('images'));
 elements.tabVideos.addEventListener('click', () => switchTab('videos'));
@@ -79,6 +87,12 @@ elements.previewDialog.addEventListener('close', resetPreview);
 
 elements.minWidthInput.addEventListener('blur', normalizeFilterInputs);
 elements.minHeightInput.addEventListener('blur', normalizeFilterInputs);
+resultSizeButtons.forEach(button => {
+  button.addEventListener('click', () => setResultImageFilter('minSize', button.dataset.resultSize));
+});
+resultRatioButtons.forEach(button => {
+  button.addEventListener('click', () => setResultImageFilter('ratio', button.dataset.resultRatio));
+});
 
 initializePopup();
 
@@ -110,6 +124,7 @@ function switchTab(tabName) {
   elements.tabImages.setAttribute('aria-selected', String(showingImages));
   elements.tabVideos.setAttribute('aria-selected', String(!showingImages));
   elements.imageFilters.hidden = !showingImages;
+  updateResultFilterVisibility();
   elements.extractBtn.hidden = !showingImages;
   elements.extractVideosBtn.hidden = showingImages;
   elements.imageGrid.hidden = !showingImages;
@@ -138,11 +153,12 @@ async function extractMedia(type) {
     }
 
     if (isImage) {
-      extractedImages = normalizeExtractedItems(response.images, 'images');
+      allExtractedImages = normalizeExtractedItems(response.images, 'images');
       selectedImages.clear();
       imageExtractionCompleted = true;
-      renderImages();
-      setStatus(`扫描完成，找到 ${extractedImages.length} 张符合条件的图片`, 'success');
+      resetResultImageFilters();
+      applyResultImageFilters(false);
+      setStatus(`扫描完成，找到 ${allExtractedImages.length} 张符合条件的图片`, 'success');
     } else {
       extractedVideos = normalizeExtractedItems(response.videos, 'videos');
       selectedVideos.clear();
@@ -189,6 +205,84 @@ function normalizeExtractedItems(items, type) {
     seenUrls.add(item.url);
     return true;
   });
+}
+
+function setResultImageFilter(key, value) {
+  if (isWorking || !imageExtractionCompleted) return;
+
+  if (key === 'minSize') {
+    resultImageFilters.minSize = normalizeDimension(value);
+  } else if (key === 'ratio') {
+    resultImageFilters.ratio = ['all', 'square', 'landscape', 'portrait'].includes(value)
+      ? value
+      : 'all';
+  } else {
+    return;
+  }
+
+  updateResultFilterButtons();
+  applyResultImageFilters(true);
+}
+
+function resetResultImageFilters() {
+  resultImageFilters = { ...DEFAULT_RESULT_IMAGE_FILTERS };
+  updateResultFilterButtons();
+}
+
+function updateResultFilterButtons() {
+  resultSizeButtons.forEach(button => {
+    const active = normalizeDimension(button.dataset.resultSize) === resultImageFilters.minSize;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  resultRatioButtons.forEach(button => {
+    const active = button.dataset.resultRatio === resultImageFilters.ratio;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+}
+
+function applyResultImageFilters(announce = true) {
+  extractedImages = filterImagesByResultSpec(allExtractedImages, resultImageFilters);
+  const visibleUrls = new Set(extractedImages.map(image => image.url));
+  selectedImages.forEach(url => {
+    if (!visibleUrls.has(url)) selectedImages.delete(url);
+  });
+
+  elements.resultFilterCount.textContent = `${extractedImages.length} / ${allExtractedImages.length}`;
+  updateResultFilterVisibility();
+  renderImages();
+
+  if (!announce) return;
+  const message = extractedImages.length > 0
+    ? `结果筛选：显示 ${extractedImages.length} / ${allExtractedImages.length} 张图片`
+    : `当前规格没有匹配图片，可调整结果规格或降低提取门槛`;
+  setStatus(message, 'neutral');
+}
+
+function filterImagesByResultSpec(images, filters = {}) {
+  if (!Array.isArray(images)) return [];
+
+  const minSize = normalizeDimension(filters.minSize);
+  const ratioFilter = ['all', 'square', 'landscape', 'portrait'].includes(filters.ratio)
+    ? filters.ratio
+    : 'all';
+
+  return images.filter(image => {
+    if (!Number.isFinite(image?.width) || !Number.isFinite(image?.height)) return false;
+    if (image.width < minSize || image.height < minSize) return false;
+    if (ratioFilter === 'all') return true;
+
+    const ratio = image.width / image.height;
+    if (ratioFilter === 'square') return ratio >= 0.9 && ratio <= 1.1;
+    if (ratioFilter === 'landscape') return ratio > 1.1;
+    return ratio < 0.9;
+  });
+}
+
+function updateResultFilterVisibility() {
+  elements.resultFilters.hidden = currentTab !== 'images' ||
+    !imageExtractionCompleted || allExtractedImages.length === 0;
 }
 
 function selectAll() {
@@ -552,7 +646,9 @@ function renderImages() {
 
   if (extractedImages.length === 0) {
     const title = imageExtractionCompleted ? '没有符合条件的图片' : '等待提取图片';
-    const hint = imageExtractionCompleted ? '可降低尺寸条件或调整图片比例' : '设置筛选条件，然后扫描当前商品页';
+    const hint = imageExtractionCompleted
+      ? '可调整结果规格，或降低提取门槛后重新扫描'
+      : '设置筛选条件，然后扫描当前商品页';
     elements.imageGrid.appendChild(createEmptyState(title, hint));
   } else {
     extractedImages.forEach((image, index) => {
@@ -560,7 +656,7 @@ function renderImages() {
     });
   }
 
-  elements.imageTabCount.textContent = String(extractedImages.length);
+  elements.imageTabCount.textContent = String(allExtractedImages.length);
   updateSelection();
 }
 
@@ -717,7 +813,9 @@ function updateSelection() {
   const itemCount = getCurrentItems().length;
   const itemType = currentTab === 'images' ? '图片' : '视频';
   elements.selectedCount.textContent = String(selectedSet.size);
-  elements.resultCount.textContent = `${itemCount} 项`;
+  elements.resultCount.textContent = currentTab === 'images' && itemCount !== allExtractedImages.length
+    ? `${itemCount} / ${allExtractedImages.length} 项`
+    : `${itemCount} 项`;
   elements.downloadLabel.textContent = currentTab === 'images' && selectedSet.size > 1
     ? `打包下载 ${selectedSet.size} 张图片`
     : `下载选中${itemType}`;
@@ -732,6 +830,9 @@ function updateControls() {
   elements.tabVideos.disabled = isWorking;
   elements.extractBtn.disabled = isWorking;
   elements.extractVideosBtn.disabled = isWorking;
+  [...resultSizeButtons, ...resultRatioButtons].forEach(button => {
+    button.disabled = isWorking;
+  });
   elements.selectAllBtn.disabled = isWorking || itemCount === 0 || selectedCount === itemCount;
   elements.deselectAllBtn.disabled = isWorking || selectedCount === 0;
   elements.downloadBtn.disabled = isWorking || selectedCount === 0;

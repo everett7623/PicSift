@@ -5,7 +5,7 @@ PicSift 当前通过 GitHub Release 或源码目录安装，适用于 Chrome、E
 ## 方式一：安装 Release 包
 
 1. 打开 [PicSift Releases](https://github.com/everett7623/PicSift/releases/latest)。
-2. 下载 `PicSift-v0.0.5.zip`。
+2. 下载 `PicSift-v0.0.6.zip`。
 3. 将 ZIP 解压到长期保留的目录，不要解压到临时目录后再删除。
 4. 在地址栏打开：
    - Chrome：`chrome://extensions/`
@@ -53,7 +53,7 @@ git pull
 ## 安装校验
 
 - 扩展名称显示为“PicSift - 商品图片提取器”。
-- 版本显示为 `0.0.5`。
+- 版本显示为 `0.0.6`。
 - 工具栏显示绿色 P 图标。
 - 点击图标后打开全屏工作台。
 - 在支持站点打开时，右上角显示来源域名。

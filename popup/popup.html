@@ -14,7 +14,7 @@
         <div>
           <div class="brand-title-row">
             <h1>PicSift</h1>
-            <span id="versionBadge" class="version-badge">v0.0.5</span>
+            <span id="versionBadge" class="version-badge">v0.0.6</span>
           </div>
           <p class="subtitle">轻松筛选并保存商品媒体</p>
         </div>
@@ -47,20 +47,20 @@
             <label class="number-field" for="minWidth">
               <span>最小宽度</span>
               <span class="input-shell">
-                <input type="number" id="minWidth" value="800" min="0" max="10000" step="50">
+                <input type="number" id="minWidth" value="750" min="0" max="10000" step="50">
                 <span>px</span>
               </span>
             </label>
             <label class="number-field" for="minHeight">
               <span>最小高度</span>
               <span class="input-shell">
-                <input type="number" id="minHeight" value="800" min="0" max="10000" step="50">
+                <input type="number" id="minHeight" value="750" min="0" max="10000" step="50">
                 <span>px</span>
               </span>
             </label>
 
             <fieldset class="ratio-filter">
-              <legend>图片比例</legend>
+              <legend>提取比例</legend>
               <div class="ratio-options">
                 <label><input type="checkbox" id="filterSquare"><span>方图</span></label>
                 <label><input type="checkbox" id="filterLandscape"><span>横图</span></label>
@@ -68,6 +68,43 @@
               </div>
             </fieldset>
           </div>
+        </div>
+
+        <div id="resultFilters" class="result-filters" aria-label="提取结果规格筛选" hidden>
+          <div class="result-filter-summary">
+            <span>结果规格</span>
+            <strong id="resultFilterCount">0 / 0</strong>
+          </div>
+
+          <fieldset class="result-filter-group">
+            <legend>尺寸</legend>
+            <div class="result-filter-options">
+              <button class="result-filter-btn active" type="button" data-result-size="0"
+                      aria-pressed="true">全部</button>
+              <button class="result-filter-btn" type="button" data-result-size="750"
+                      aria-pressed="false" title="宽高均不小于 750px">750+</button>
+              <button class="result-filter-btn" type="button" data-result-size="800"
+                      aria-pressed="false" title="宽高均不小于 800px">800+</button>
+              <button class="result-filter-btn" type="button" data-result-size="1000"
+                      aria-pressed="false" title="宽高均不小于 1000px">1000+</button>
+              <button class="result-filter-btn" type="button" data-result-size="1500"
+                      aria-pressed="false" title="宽高均不小于 1500px">1500+</button>
+            </div>
+          </fieldset>
+
+          <fieldset class="result-filter-group">
+            <legend>比例</legend>
+            <div class="result-filter-options">
+              <button class="result-filter-btn active" type="button" data-result-ratio="all"
+                      aria-pressed="true">全部</button>
+              <button class="result-filter-btn" type="button" data-result-ratio="square"
+                      aria-pressed="false">方图</button>
+              <button class="result-filter-btn" type="button" data-result-ratio="landscape"
+                      aria-pressed="false">横图</button>
+              <button class="result-filter-btn" type="button" data-result-ratio="portrait"
+                      aria-pressed="false">竖图</button>
+            </div>
+          </fieldset>
         </div>
 
         <div class="action-row">

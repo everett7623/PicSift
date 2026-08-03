@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-PicSift 是 Chrome Manifest V3 扩展，使用原生 JavaScript、HTML 和 CSS，无打包与依赖安装步骤。当前版本：`v0.0.5`。
+PicSift 是 Chrome Manifest V3 扩展，使用原生 JavaScript、HTML 和 CSS，无打包与依赖安装步骤。当前版本：`v0.0.6`。
 
 ## 架构
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PicSift - 商品图片提取器",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "一键提取阿里巴巴、1688、中国制造网等商品页面中的高清主图和详情图",
   "author": "Everett Labs (https://everettlabs.dev/)",
   "homepage_url": "https://everettlabs.dev/",

@@ -66,7 +66,7 @@ function createFakeElement() {
     setAttribute() {},
     showModal() {},
     textContent: '',
-    value: '800'
+    value: '750'
   };
 }
 
@@ -353,12 +353,31 @@ test('result grid keeps large image batches in explicit non-overlapping rows', (
   assert.match(popupCss, /\.media-grid\.is-empty\s*\{[^}]*grid-auto-rows:\s*auto;/s);
 });
 
+test('result spec filters extracted images locally by size and ratio', () => {
+  const context = loadPopupScript();
+  const images = [
+    { url: 'https://example.com/750-square.jpg', width: 750, height: 750 },
+    { url: 'https://example.com/1000-square.jpg', width: 1000, height: 1000 },
+    { url: 'https://example.com/landscape.jpg', width: 1600, height: 1000 },
+    { url: 'https://example.com/portrait.jpg', width: 1000, height: 1600 }
+  ];
+
+  const squareImages = context.filterImagesByResultSpec(images, { minSize: 800, ratio: 'square' });
+  const landscapeImages = context.filterImagesByResultSpec(images, { minSize: 1000, ratio: 'landscape' });
+
+  assert.deepEqual(Array.from(squareImages, image => image.url), ['https://example.com/1000-square.jpg']);
+  assert.deepEqual(Array.from(landscapeImages, image => image.url), ['https://example.com/landscape.jpg']);
+});
+
 test('manifest permits automatic source-page reinjection', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'manifest.json'), 'utf8'));
   const popupHtml = fs.readFileSync(path.join(repositoryRoot, 'popup/popup.html'), 'utf8');
 
-  assert.equal(manifest.version, '0.0.5');
-  assert.match(popupHtml, />v0\.0\.5</);
+  assert.equal(manifest.version, '0.0.6');
+  assert.match(popupHtml, />v0\.0\.6</);
+  assert.match(popupHtml, /id="minWidth" value="750"/);
+  assert.match(popupHtml, /id="minHeight" value="750"/);
+  assert.match(popupHtml, /id="resultFilters"/);
   assert.equal(manifest.permissions.includes('scripting'), true);
   assert.equal(Object.hasOwn(manifest.action, 'default_popup'), false);
 });

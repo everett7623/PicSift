@@ -1,4 +1,4 @@
-# PicSift v0.0.5 发布说明
+# PicSift v0.0.6 发布说明
 
 发布日期：2026-08-03
 
@@ -8,13 +8,20 @@
 
 ## 下载
 
-- [GitHub Release](https://github.com/everett7623/PicSift/releases/tag/v0.0.5)
-- Release 资源：`PicSift-v0.0.5.zip`
-- SHA256：`EBCCD53E459F1277B9C283B852951C09E8A3FC6FEF2F9044ACBEB4BC5F04702A`
+- [GitHub Release](https://github.com/everett7623/PicSift/releases/tag/v0.0.6)
+- Release 资源：`PicSift-v0.0.6.zip`
+- SHA256：`3bd4db308b753ef58b99e15aeb3781e5ac457697c9effb6e23b8edeecb910135`
 
 下载后先解压，再从 `chrome://extensions/` 加载包含 `manifest.json` 的目录。
 
 ## 本次发布
+
+### 提取后结果规格筛选
+
+- 默认提取门槛调整为 750 × 750。
+- 提取完成后可按 750+、800+、1000+、1500+ 即时筛选。
+- 可在全部、方图、横图、竖图之间切换，不重新扫描来源页面。
+- 显示当前结果数与提取总数，并避免下载被筛掉的隐藏选择。
 
 ### Alibaba 提取修复
 
