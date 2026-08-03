@@ -1,105 +1,81 @@
-# PicSift - 安装测试指南
+# PicSift 安装指南
 
-## 已完成优化
+PicSift 当前通过 GitHub Release 或源码目录安装，适用于 Chrome、Edge 等支持 Manifest V3 的 Chromium 浏览器。
 
-✅ **安全修复**：移除 `innerHTML`，使用 DOM API 防止 XSS
-✅ **URL 验证**：添加协议检查，仅允许 HTTP/HTTPS
-✅ **代码优化**：改进错误处理和日志输出
+## 方式一：安装 Release 包
 
----
+1. 打开 [PicSift Releases](https://github.com/everett7623/PicSift/releases/latest)。
+2. 下载 `PicSift-v0.0.5.zip`。
+3. 将 ZIP 解压到长期保留的目录，不要解压到临时目录后再删除。
+4. 在地址栏打开：
+   - Chrome：`chrome://extensions/`
+   - Edge：`edge://extensions/`
+5. 开启“开发者模式”。
+6. 点击“加载已解压的扩展程序”。
+7. 选择包含 `manifest.json` 的解压目录。
 
-## 快速安装（3 步）
+Chrome 不能通过双击 ZIP 直接安装未上架扩展，必须先解压。
 
-### 1. 生成图标
-
-由于缺少图标文件，插件暂时无法加载。你有两个选择：
-
-**方案 A：使用图标生成器（推荐）**
-
-```bash
-# 打开图标生成器
-start icons/create_icons.html
-```
-
-在浏览器中会自动下载 4 个图标文件，将它们移动到 `icons/` 目录。
-
-**方案 B：使用占位图标（临时）**
+## 方式二：从源码安装
 
 ```bash
-# 下载或创建简单的 PNG 图标
-# 或者暂时注释掉 manifest.json 中的 icons 配置
+git clone https://github.com/everett7623/PicSift.git
+cd PicSift
 ```
 
-### 2. 加载插件到 Chrome
+在扩展管理页选择该仓库根目录。项目不需要 `npm install` 或编译。
 
-1. 打开 Chrome 浏览器
-2. 访问 `chrome://extensions/`
-3. 开启右上角的 **"开发者模式"**
-4. 点击 **"加载已解压的扩展程序"**
-5. 选择项目根目录：`D:\EvenFrank\Workspace\Plugins\Google\PicSift`
+## 固定扩展图标
 
-### 3. 测试功能
+1. 点击浏览器工具栏的扩展菜单。
+2. 找到 PicSift。
+3. 点击固定图标。
 
-访问测试网站：
-- https://www.alibaba.com（任意商品页）
-- https://www.1688.com（任意商品页）
+固定后可直接从商品页打开工作台。
 
-点击浏览器工具栏的 PicSift 图标，点击"提取图片"。
+## 更新扩展
 
----
+### Release 安装
 
-## 调试方法
+1. 下载并解压新版本。
+2. 用新文件替换原目录，或加载一个新的版本目录。
+3. 回到扩展管理页，点击 PicSift 卡片上的“重新加载”。
+4. 打开工作台，确认左上角版本号已更新。
 
-### 调试 Popup
+### Git 安装
 
-右键点击插件图标 → **检查弹出内容** → Console 标签
+```bash
+git pull
+```
 
-### 调试 Content Script
+拉取后同样需要在扩展管理页重新加载。
 
-1. 打开目标网页（如 Alibaba.com）
-2. 按 `F12` 打开开发者工具
-3. Console 标签中查看日志
+## 安装校验
 
-### 调试 Background Service Worker
-
-1. 访问 `chrome://extensions/`
-2. 找到 PicSift 插件卡片
-3. 点击 **"Service Worker"** → **"检查视图"**
-
----
+- 扩展名称显示为“PicSift - 商品图片提取器”。
+- 版本显示为 `0.0.5`。
+- 工具栏显示绿色 P 图标。
+- 点击图标后打开全屏工作台。
+- 在支持站点打开时，右上角显示来源域名。
 
 ## 常见问题
 
-### ❌ 插件图标不显示
+### “清单文件缺失或不可读取”
 
-需要在 `icons/` 目录添加以下文件：
-- `icon16.png`
-- `icon32.png`
-- `icon48.png`
-- `icon128.png`
+选择了错误的目录。应选择直接包含 `manifest.json` 的目录，而不是它的上级目录。
 
-### ❌ 点击图标没有反应
+### 点击图标没有打开工作台
 
-检查 `popup/popup.html` 路径是否正确，或查看 Chrome 扩展页面的错误信息。
+1. 在扩展管理页点击“重新加载”。
+2. 打开 PicSift 的 Service Worker 检查视图。
+3. 确认 `popup/popup.html`、`background/background.js` 存在。
 
-### ❌ 提取不到图片
+### 显示旧版本号
 
-1. 检查网站是否在 `manifest.json` 的 `host_permissions` 中
-2. 打开 Console 查看错误日志
-3. 确认页面已完全加载
+扩展源码不会自动热更新。替换文件后必须点击“重新加载”，再刷新已经打开的工作台标签页。
 
-### ❌ 下载失败
+### 当前页面不可提取
 
-检查 Chrome 的下载权限设置，或查看 Background Service Worker 的 Console 日志。
+确认页面域名在 [README 支持站点](README.md#支持站点) 中，并且当前是普通 HTTP(S) 商品页。`chrome://`、浏览器设置页和本地文件页不能提取。
 
----
-
-## 下一步开发
-
-- [ ] 添加更多网站支持（淘宝、京东、eBay）
-- [ ] 视频提取功能
-- [ ] 图片去重（感知哈希）
-- [ ] 导出 URL 列表
-- [ ] 自定义文件名模板
-
-需要我帮你实现其中的功能吗？
+后续操作见 [使用指南](USAGE.md)，开发排查见 [测试指南](TESTING.md)。

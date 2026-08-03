@@ -1,105 +1,92 @@
-#!/bin/bash
-# PicSift 自动测试脚本
+#!/usr/bin/env bash
+set -u
 
-cd "D:/EvenFrank/Workspace/Plugins/Google/PicSift"
+REPOSITORY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$REPOSITORY_ROOT" || exit 1
 
-echo "════════════════════════════════════════════════════════════"
-echo "  PicSift v1.0.0 - 自动测试报告"
-echo "════════════════════════════════════════════════════════════"
-echo ""
+failures=0
 
-# 1. 文件结构检查
-echo "1️⃣  文件结构检查"
-echo "────────────────────────────────────────────────────────────"
+pass() {
+  printf '  PASS  %s\n' "$1"
+}
 
-FILES=(
-  "manifest.json"
-  "popup/popup.html"
-  "popup/popup.js"
-  "popup/popup.css"
-  "content/content.js"
-  "background/background.js"
-  "icons/icon16.png"
-  "icons/icon32.png"
-  "icons/icon48.png"
-  "icons/icon128.png"
+fail() {
+  printf '  FAIL  %s\n' "$1"
+  failures=$((failures + 1))
+}
+
+printf 'PicSift repository checks\n\n'
+
+required_files=(
+  'manifest.json'
+  'popup/popup.html'
+  'popup/popup.css'
+  'popup/popup.js'
+  'content/content.js'
+  'background/background.js'
+  'icons/icon16.png'
+  'icons/icon32.png'
+  'icons/icon48.png'
+  'icons/icon128.png'
+  'AGENTS.md'
 )
 
-for file in "${FILES[@]}"; do
-  if [ -f "$file" ]; then
-    echo "  ✓ $file"
+printf 'Required files\n'
+for file in "${required_files[@]}"; do
+  if [[ -f "$file" ]]; then
+    pass "$file"
   else
-    echo "  ✗ $file (缺失)"
+    fail "$file is missing"
   fi
 done
-echo ""
 
-# 2. JSON 格式检查
-echo "2️⃣  JSON 格式检查"
-echo "────────────────────────────────────────────────────────────"
-if python -m json.tool manifest.json > /dev/null 2>&1; then
-  echo "  ✓ manifest.json 格式正确"
-else
-  echo "  ✗ manifest.json 格式错误"
-fi
-echo ""
-
-# 3. JavaScript 语法检查
-echo "3️⃣  JavaScript 语法检查"
-echo "────────────────────────────────────────────────────────────"
-if node --check content/content.js 2>&1; then
-  echo "  ✓ content.js 语法正确"
-else
-  echo "  ✗ content.js 语法错误"
-fi
-
-if node --check popup/popup.js 2>&1; then
-  echo "  ✓ popup.js 语法正确"
-else
-  echo "  ✗ popup.js 语法错误"
-fi
-
-if node --check background/background.js 2>&1; then
-  echo "  ✓ background.js 语法正确"
-else
-  echo "  ✗ background.js 语法错误"
-fi
-echo ""
-
-# 4. 代码统计
-echo "4️⃣  代码统计"
-echo "────────────────────────────────────────────────────────────"
-echo "  核心代码:"
-wc -l content/content.js popup/popup.js background/background.js | tail -1
-echo ""
-
-# 5. 文档检查
-echo "5️⃣  文档检查"
-echo "────────────────────────────────────────────────────────────"
-DOCS=("README.md" "CLAUDE.md" "INSTALL.md" "TESTING.md" "CHANGELOG.md" "PROJECT_SUMMARY.md")
-for doc in "${DOCS[@]}"; do
-  if [ -f "$doc" ]; then
-    echo "  ✓ $doc"
+printf '\nManifest\n'
+if command -v python >/dev/null 2>&1; then
+  if python -m json.tool manifest.json >/dev/null; then
+    pass 'manifest.json is valid JSON'
   else
-    echo "  ✗ $doc (缺失)"
+    fail 'manifest.json is invalid JSON'
   fi
-done
-echo ""
+elif command -v python3 >/dev/null 2>&1; then
+  if python3 -m json.tool manifest.json >/dev/null; then
+    pass 'manifest.json is valid JSON'
+  else
+    fail 'manifest.json is invalid JSON'
+  fi
+else
+  fail 'Python is required for manifest validation'
+fi
 
-echo "════════════════════════════════════════════════════════════"
-echo "  ✅ 静态检查完成"
-echo "════════════════════════════════════════════════════════════"
-echo ""
-echo "🚀 下一步: 手动测试"
-echo ""
-echo "1. 加载插件:"
-echo "   chrome://extensions/ → 开启开发者模式 → 加载已解压的扩展程序"
-echo ""
-echo "2. 测试网站:"
-echo "   https://www.alibaba.com (图片提取)"
-echo "   https://detail.1688.com (视频提取)"
-echo ""
-echo "3. 调试方法:"
-echo "   右键插件图标 → 检查弹出内容"
-echo "   目标网页 F12 → Console 查看提取日志"
-echo ""
+printf '\nJavaScript syntax\n'
+if command -v node >/dev/null 2>&1; then
+  scripts=(
+    'content/content.js'
+    'popup/popup.js'
+    'background/background.js'
+  )
+
+  for script in "${scripts[@]}"; do
+    if node --check "$script"; then
+      pass "$script"
+    else
+      fail "$script has syntax errors"
+    fi
+  done
+
+  printf '\nCore tests\n'
+  if node --test tests/*.test.js; then
+    pass 'Node tests'
+  else
+    fail 'Node tests'
+  fi
+else
+  fail 'Node.js is required for JavaScript checks'
+fi
+
+printf '\n'
+if ((failures > 0)); then
+  printf 'Checks failed: %d\n' "$failures"
+  exit 1
+fi
+
+printf 'All checks passed. Continue with the manual scenarios in TESTING.md.\n'

@@ -3,70 +3,140 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PicSift</title>
+  <title>PicSift 媒体工作台</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>PicSift</h1>
-      <p class="subtitle">商品图片提取器</p>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <img class="brand-icon" src="../icons/icon48.png" alt="">
+        <div>
+          <div class="brand-title-row">
+            <h1>PicSift</h1>
+            <span id="versionBadge" class="version-badge">v0.0.5</span>
+          </div>
+          <p class="subtitle">轻松筛选并保存商品媒体</p>
+        </div>
+      </div>
+
+      <button id="siteBadge" class="site-badge" type="button" data-state="checking"
+              aria-label="返回来源商品页">
+        <span class="site-dot" aria-hidden="true"></span>
+        <span id="siteName">正在识别当前页面</span>
+      </button>
     </header>
 
-    <div class="controls">
-      <div class="tab-switcher">
-        <button id="tabImages" class="tab-btn active">图片</button>
-        <button id="tabVideos" class="tab-btn">视频</button>
-      </div>
-
-      <div id="imageFilters" class="filter-section">
-        <div class="filter-group">
-          <label>
-            <span>最小宽度：</span>
-            <input type="number" id="minWidth" value="800" min="0">
-            <span>px</span>
-          </label>
-          <label>
-            <span>最小高度：</span>
-            <input type="number" id="minHeight" value="800" min="0">
-            <span>px</span>
-          </label>
+    <main class="workspace">
+      <section class="control-panel" aria-label="提取设置">
+        <div class="tab-switcher" role="tablist" aria-label="媒体类型">
+          <button id="tabImages" class="tab-btn active" type="button" role="tab"
+                  aria-selected="true" aria-controls="imageGrid">
+            图片
+            <span id="imageTabCount" class="tab-count">0</span>
+          </button>
+          <button id="tabVideos" class="tab-btn" type="button" role="tab"
+                  aria-selected="false" aria-controls="videoGrid">
+            视频
+            <span id="videoTabCount" class="tab-count">0</span>
+          </button>
         </div>
 
-        <div class="ratio-filter">
-          <label><input type="checkbox" id="filterSquare"> 方图</label>
-          <label><input type="checkbox" id="filterLandscape"> 横图</label>
-          <label><input type="checkbox" id="filterPortrait"> 竖图</label>
+        <div id="imageFilters" class="filter-section" role="tabpanel" aria-labelledby="tabImages">
+          <div class="filter-row">
+            <label class="number-field" for="minWidth">
+              <span>最小宽度</span>
+              <span class="input-shell">
+                <input type="number" id="minWidth" value="800" min="0" max="10000" step="50">
+                <span>px</span>
+              </span>
+            </label>
+            <label class="number-field" for="minHeight">
+              <span>最小高度</span>
+              <span class="input-shell">
+                <input type="number" id="minHeight" value="800" min="0" max="10000" step="50">
+                <span>px</span>
+              </span>
+            </label>
+
+            <fieldset class="ratio-filter">
+              <legend>图片比例</legend>
+              <div class="ratio-options">
+                <label><input type="checkbox" id="filterSquare"><span>方图</span></label>
+                <label><input type="checkbox" id="filterLandscape"><span>横图</span></label>
+                <label><input type="checkbox" id="filterPortrait"><span>竖图</span></label>
+              </div>
+            </fieldset>
+          </div>
         </div>
+
+        <div class="action-row">
+          <button id="extractBtn" class="primary-btn" type="button">
+            <span aria-hidden="true">✦</span>
+            提取本页图片
+          </button>
+          <button id="extractVideosBtn" class="primary-btn" type="button" hidden>
+            <span aria-hidden="true">▶</span>
+            提取本页视频
+          </button>
+          <div class="selection-actions">
+            <button id="selectAllBtn" class="secondary-btn" type="button">全选</button>
+            <button id="deselectAllBtn" class="secondary-btn" type="button">取消</button>
+          </div>
+        </div>
+
+        <div id="status" class="status-bar" data-tone="neutral" role="status" aria-live="polite">
+          <span class="status-indicator" aria-hidden="true"></span>
+          <span id="statusText">准备就绪，设置筛选条件后开始提取</span>
+        </div>
+      </section>
+
+      <section class="results" aria-labelledby="resultTitle">
+        <div class="results-header">
+          <div>
+            <p class="eyebrow">提取结果</p>
+            <h2 id="resultTitle">图片</h2>
+          </div>
+          <div class="results-meta">
+            <span class="preview-tip">单击选择 · 双击预览</span>
+            <span id="resultCount" class="result-count">0 项</span>
+          </div>
+        </div>
+
+        <div id="imageGrid" class="media-grid image-grid" role="group" aria-label="图片结果"></div>
+        <div id="videoGrid" class="media-grid video-grid" role="group" aria-label="视频结果" hidden></div>
+      </section>
+    </main>
+
+    <dialog id="previewDialog" class="preview-dialog" aria-labelledby="previewTitle">
+      <div class="preview-header">
+        <div>
+          <p class="eyebrow">媒体预览</p>
+          <h2 id="previewTitle">查看原图</h2>
+        </div>
+        <button id="closePreviewBtn" class="close-preview-btn" type="button" aria-label="关闭预览">×</button>
       </div>
-
-      <div class="actions">
-        <button id="extractBtn" class="primary">提取图片</button>
-        <button id="extractVideosBtn" class="primary" style="display:none;">提取视频</button>
-        <button id="selectAllBtn">全选</button>
-        <button id="deselectAllBtn">取消全选</button>
+      <div class="preview-stage">
+        <img id="previewImage" alt="媒体大图预览" hidden>
+        <video id="previewVideo" controls muted playsinline hidden></video>
       </div>
-    </div>
+      <div class="preview-footer">
+        <span id="previewMeta">—</span>
+        <a id="previewOriginalLink" href="#" target="_blank" rel="noreferrer">打开原始文件 ↗</a>
+      </div>
+    </dialog>
 
-    <div id="status" class="status"></div>
-
-    <div id="imageGrid" class="image-grid">
-      <!-- 动态插入图片 -->
-    </div>
-
-    <div id="videoGrid" class="video-grid" style="display:none;">
-      <!-- 动态插入视频 -->
-    </div>
-
-    <div class="footer-actions">
-      <button id="downloadBtn" class="download-btn" disabled>
-        下载选中内容 (<span id="selectedCount">0</span>)
+    <div class="bottom-bar">
+      <div class="selection-summary">
+        <span>已选择</span>
+        <strong><span id="selectedCount">0</span> 项</strong>
+      </div>
+      <a class="maker-link" href="https://everettlabs.dev/" target="_blank" rel="noreferrer">Everett Labs</a>
+      <button id="downloadBtn" class="download-btn" type="button" disabled>
+        <span id="downloadLabel">下载选中图片</span>
+        <span aria-hidden="true">↓</span>
       </button>
     </div>
-
-    <footer style="text-align: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid #1f2937; font-size: 11px; color: #6b7280;">
-      Made by <a href="https://everettlabs.dev/" target="_blank" style="color: #34D399; text-decoration: none;">Everett Labs</a>
-    </footer>
   </div>
 
   <script src="popup.js"></script>

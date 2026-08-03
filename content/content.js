@@ -1,532 +1,494 @@
-// 监听来自 popup 的消息
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'extractImages') {
-    extractImages(request.filters)
-      .then(images => sendResponse({ success: true, images }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true; // 保持消息通道开启
-  }
+// 使用 var 允许脚本在同一隔离世界被安全地重复注入。
+var IMAGE_LOAD_CONCURRENCY = 16;
+var IMAGE_LOAD_TIMEOUT_MS = 4000;
+var IMAGE_EXTRACTION_TIMEOUT_MS = 18000;
+var MAX_IMAGE_CANDIDATES = 350;
+var MAX_EMBEDDED_SCRIPT_CHARS = 1500000;
 
-  if (request.action === 'extractVideos') {
-    extractVideos()
-      .then(videos => sendResponse({ success: true, videos }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-});
+// 动态补注入时保持监听器幂等，避免一次请求收到多个响应。
+if (!globalThis.__picSiftMessageListenerInstalled) {
+  globalThis.__picSiftMessageListenerInstalled = true;
+
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request?.action === 'ping') {
+      sendResponse({ success: true, ready: true });
+      return false;
+    }
+
+    if (request?.action === 'extractImages') {
+      extractImages(request.filters)
+        .then(images => sendResponse({ success: true, images }))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      return true;
+    }
+
+    if (request?.action === 'extractVideos') {
+      extractVideos()
+        .then(videos => sendResponse({ success: true, videos }))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      return true;
+    }
+
+    return false;
+  });
+}
 
 /**
- * 提取页面中的商品图片
- * @param {Object} filters - 筛选条件
- * @returns {Promise<Array>} 图片列表
+ * 提取页面中的商品图片。
  */
-async function extractImages(filters) {
-  const images = [];
-  const seenUrls = new Set();
-
-  // 1. 提取 <img> 标签图片
-  const imgElements = document.querySelectorAll('img');
-  for (const img of imgElements) {
-    // 使用 getAttribute 避免 img.src 返回页面 URL
-    const rawSrc = img.getAttribute('src') || img.getAttribute('data-src') || img.dataset.src;
-    const url = rawSrc ? getHighResUrl(rawSrc) : null;
-    if (url && !seenUrls.has(url)) {
-      const dimensions = await getImageDimensions(url);
-      if (dimensions && passFilters(dimensions, filters)) {
-        images.push({
-          url,
-          width: dimensions.width,
-          height: dimensions.height,
-          type: 'img'
-        });
-        seenUrls.add(url);
-      }
-    }
+async function extractImages(filters = {}) {
+  if (isAlibabaAccessBlocked()) {
+    throw new Error('Alibaba 要求登录或安全验证，请完成验证并返回商品页后重试');
   }
 
-  // 2. 提取背景图片
-  const elementsWithBg = document.querySelectorAll('[style*="background"]');
-  for (const el of elementsWithBg) {
-    const bgStyle = window.getComputedStyle(el).backgroundImage;
-    // 使用 matchAll 提取所有 url()，支持多背景图
-    const urlMatches = bgStyle.matchAll(/url\(['"]?(.*?)['"]?\)/g);
-    for (const urlMatch of urlMatches) {
-      if (urlMatch[1]) {
-        const url = getHighResUrl(urlMatch[1]);
-        if (url && !seenUrls.has(url)) {
-          const dimensions = await getImageDimensions(url);
-          if (dimensions && passFilters(dimensions, filters)) {
-            images.push({
-              url,
-              width: dimensions.width,
-              height: dimensions.height,
-              type: 'background'
-            });
-            seenUrls.add(url);
-          }
-        }
-      }
-    }
-  }
+  const candidates = new Map();
+  const normalizedFilters = normalizeFilters(filters);
+  const extractionDeadline = Date.now() + IMAGE_EXTRACTION_TIMEOUT_MS;
 
-  // 3. 阿里巴巴特定提取逻辑
+  const addCandidate = (rawUrl, type) => {
+    if (candidates.size >= MAX_IMAGE_CANDIDATES) return;
+    const url = getHighResUrl(rawUrl);
+    if (url && !candidates.has(url)) candidates.set(url, type);
+  };
+
+  // 先加入站点专用商品图，避免大型页面的通用素材占满候选上限。
   if (isAlibabaSite()) {
-    const aliImages = extractAlibabaImages();
-    for (const url of aliImages) {
-      const highResUrl = getHighResUrl(url);
-      if (highResUrl && !seenUrls.has(highResUrl)) {
-        const dimensions = await getImageDimensions(highResUrl);
-        if (dimensions && passFilters(dimensions, filters)) {
-          images.push({
-            url: highResUrl,
-            width: dimensions.width,
-            height: dimensions.height,
-            type: 'alibaba'
-          });
-          seenUrls.add(highResUrl);
-        }
-      }
-    }
+    extractAlibabaImages().forEach(url => addCandidate(url, 'alibaba'));
+    extractDocumentMetadataImages().forEach(url => addCandidate(url, 'alibaba-meta'));
+    extractAlibabaEmbeddedImages().forEach(url => addCandidate(url, 'alibaba-data'));
+    extractLoadedResourceImages().forEach(url => addCandidate(url, 'alibaba-resource'));
   }
-
-  // 4. 淘宝/天猫特定提取
   if (isTaobaoSite()) {
-    const taobaoImages = extractTaobaoImages();
-    for (const url of taobaoImages) {
-      const highResUrl = getHighResUrl(url);
-      if (highResUrl && !seenUrls.has(highResUrl)) {
-        const dimensions = await getImageDimensions(highResUrl);
-        if (dimensions && passFilters(dimensions, filters)) {
-          images.push({
-            url: highResUrl,
-            width: dimensions.width,
-            height: dimensions.height,
-            type: 'taobao'
-          });
-          seenUrls.add(highResUrl);
-        }
-      }
-    }
+    extractTaobaoImages().forEach(url => addCandidate(url, 'taobao'));
   }
-
-  // 5. 京东特定提取
   if (isJDSite()) {
-    const jdImages = extractJDImages();
-    for (const url of jdImages) {
-      const highResUrl = getHighResUrl(url);
-      if (highResUrl && !seenUrls.has(highResUrl)) {
-        const dimensions = await getImageDimensions(highResUrl);
-        if (dimensions && passFilters(dimensions, filters)) {
-          images.push({
-            url: highResUrl,
-            width: dimensions.width,
-            height: dimensions.height,
-            type: 'jd'
-          });
-          seenUrls.add(highResUrl);
-        }
-      }
-    }
+    extractJDImages().forEach(url => addCandidate(url, 'jd'));
   }
-
-  // 6. 中国制造网特定提取
   if (isMadeInChinaSite()) {
-    const micImages = extractMadeInChinaImages();
-    for (const url of micImages) {
-      const highResUrl = getHighResUrl(url);
-      if (highResUrl && !seenUrls.has(highResUrl)) {
-        const dimensions = await getImageDimensions(highResUrl);
-        if (dimensions && passFilters(dimensions, filters)) {
-          images.push({
-            url: highResUrl,
-            width: dimensions.width,
-            height: dimensions.height,
-            type: 'made-in-china'
-          });
-          seenUrls.add(highResUrl);
-        }
-      }
-    }
+    extractMadeInChinaImages().forEach(url => addCandidate(url, 'made-in-china'));
   }
 
-  return images;
+  document.querySelectorAll('img').forEach(img => {
+    getImageSourceCandidates(img).forEach(url => addCandidate(url, 'img'));
+  });
+
+  // 提取内联背景图，避免遍历整页计算样式造成明显卡顿。
+  document.querySelectorAll('[style*="background"]').forEach(element => {
+    extractCssUrls(window.getComputedStyle(element).backgroundImage)
+      .forEach(url => addCandidate(url, 'background'));
+  });
+
+  document.querySelectorAll('[data-background-image], [data-bg], [data-lazy-background]')
+    .forEach(element => {
+      const value = element.dataset.backgroundImage || element.dataset.bg || element.dataset.lazyBackground;
+      const urls = extractCssUrls(value);
+      (urls.length > 0 ? urls : [value]).forEach(url => addCandidate(url, 'background'));
+    });
+
+  const entries = Array.from(candidates, ([url, type]) => ({ url, type }));
+  const results = await mapWithConcurrency(entries, IMAGE_LOAD_CONCURRENCY, async candidate => {
+    const remainingTime = extractionDeadline - Date.now();
+    if (remainingTime <= 0) return null;
+
+    const dimensions = await getImageDimensions(
+      candidate.url,
+      Math.min(IMAGE_LOAD_TIMEOUT_MS, remainingTime)
+    );
+    if (!dimensions || !passFilters(dimensions, normalizedFilters)) return null;
+    return { ...candidate, ...dimensions };
+  });
+
+  return results.filter(Boolean);
 }
 
-/**
- * 判断是否为阿里系网站
- */
-function isAlibabaSite() {
-  const hostname = window.location.hostname;
-  return hostname.includes('alibaba.com') ||
-         hostname.includes('1688.com') ||
-         hostname.includes('aliexpress.com');
+function getImageSourceCandidates(img) {
+  const candidates = [
+    img.getAttribute('data-zoom-image'),
+    img.getAttribute('data-original'),
+    img.getAttribute('data-large'),
+    getLargestSrcsetCandidate(img.getAttribute('data-srcset')),
+    getLargestSrcsetCandidate(img.getAttribute('srcset')),
+    img.getAttribute('data-lazy-src'),
+    img.getAttribute('data-ks-lazyload'),
+    img.getAttribute('data-src'),
+    img.currentSrc,
+    img.getAttribute('src')
+  ];
+
+  return Array.from(new Set(candidates.filter(candidate => normalizeMediaUrl(candidate))));
 }
 
-/**
- * 判断是否为淘宝/天猫
- */
-function isTaobaoSite() {
-  const hostname = window.location.hostname;
-  return hostname.includes('taobao.com') || hostname.includes('tmall.com');
+function getLargestSrcsetCandidate(srcset) {
+  if (!srcset || typeof srcset !== 'string') return null;
+
+  const candidates = srcset.split(',')
+    .map(item => {
+      const [url, descriptor = '1x'] = item.trim().split(/\s+/);
+      const score = Number.parseFloat(descriptor) || 1;
+      return { url, score };
+    })
+    .filter(candidate => candidate.url);
+
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0]?.url || null;
 }
 
-/**
- * 判断是否为京东
- */
-function isJDSite() {
-  const hostname = window.location.hostname;
-  return hostname.includes('jd.com');
+function extractCssUrls(value) {
+  if (!value || typeof value !== 'string') return [];
+  return Array.from(value.matchAll(/url\(['"]?(.*?)['"]?\)/g), match => match[1]).filter(Boolean);
 }
 
-/**
- * 判断是否为中国制造网
- */
-function isMadeInChinaSite() {
-  const hostname = window.location.hostname;
-  return hostname.includes('made-in-china.com');
+function extractImagesFromSelectors(selectors) {
+  return Array.from(document.querySelectorAll(selectors))
+    .flatMap(getImageSourceCandidates);
 }
 
-/**
- * 提取阿里巴巴特定图片
- */
 function extractAlibabaImages() {
-  const images = [];
-
-  // 主图轮播
-  const mainImages = document.querySelectorAll('.images-view-item img, .img-thumb img');
-  mainImages.forEach(img => {
-    if (img.src) images.push(img.src);
-    if (img.dataset.src) images.push(img.dataset.src);
-  });
-
-  // 详情图
-  const detailImages = document.querySelectorAll('.detail-gallery img, .description img');
-  detailImages.forEach(img => {
-    if (img.src) images.push(img.src);
-    if (img.dataset.src) images.push(img.dataset.src);
-  });
-
-  return images;
+  return extractImagesFromSelectors(
+    '.images-view-item img, .img-thumb img, .detail-gallery img, .description img, ' +
+    '[class*="product-image"] img, [class*="image-gallery"] img, [class*="detail-content"] img'
+  );
 }
 
-/**
- * 提取淘宝/天猫特定图片
- */
+function extractDocumentMetadataImages() {
+  const urls = [];
+  const selectors = [
+    'meta[property="og:image"]',
+    'meta[property="og:image:secure_url"]',
+    'meta[name="twitter:image"]',
+    'link[rel="image_src"]',
+    'link[rel="preload"][as="image"]'
+  ].join(', ');
+
+  document.querySelectorAll(selectors).forEach(element => {
+    const value = element.getAttribute('content') || element.getAttribute('href');
+    if (value) urls.push(value);
+  });
+  return urls;
+}
+
+function extractLoadedResourceImages() {
+  if (typeof globalThis.performance?.getEntriesByType !== 'function') return [];
+
+  return globalThis.performance.getEntriesByType('resource')
+    .filter(entry => entry?.initiatorType === 'img' || isLikelyImageUrl(entry?.name))
+    .map(entry => entry.name)
+    .filter(Boolean);
+}
+
+function extractAlibabaEmbeddedImages() {
+  const urls = [];
+  let scannedChars = 0;
+
+  document.querySelectorAll('script:not([src])').forEach(script => {
+    if (scannedChars >= MAX_EMBEDDED_SCRIPT_CHARS) return;
+
+    const rawText = String(script.textContent || '');
+    if (!/(?:alicdn|alibabausercontent)/i.test(rawText)) return;
+
+    const remainingChars = MAX_EMBEDDED_SCRIPT_CHARS - scannedChars;
+    const text = rawText.slice(0, remainingChars);
+    scannedChars += text.length;
+    extractImageUrlsFromText(text).forEach(url => urls.push(url));
+  });
+
+  return urls;
+}
+
+function extractImageUrlsFromText(value) {
+  if (!value || typeof value !== 'string') return [];
+
+  const normalizedText = value
+    .replace(/\\u003a/gi, ':')
+    .replace(/\\u002f/gi, '/')
+    .replace(/\\\//g, '/')
+    .replace(/&amp;/gi, '&');
+  const matches = normalizedText.match(/(?:https?:)?\/\/[^"'<>\\\s]+/g) || [];
+
+  return Array.from(new Set(matches.filter(isLikelyImageUrl)));
+}
+
+function isLikelyImageUrl(value) {
+  const normalizedUrl = normalizeMediaUrl(value);
+  if (!normalizedUrl) return false;
+
+  try {
+    const url = new URL(normalizedUrl);
+    const isImagePath = /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)(?:_|$)/i.test(url.pathname);
+    const isAlibabaCdn = isHost(url.hostname, 'alicdn.com') ||
+      isHost(url.hostname, 'alibabausercontent.com');
+    return isImagePath && isAlibabaCdn;
+  } catch {
+    return false;
+  }
+}
+
 function extractTaobaoImages() {
-  const images = [];
-
-  // 主图轮播
-  const mainImages = document.querySelectorAll('.tb-booth img, .tb-thumb img, #J_ImgBooth img');
-  mainImages.forEach(img => {
-    if (img.src) images.push(img.src);
-    if (img.dataset.src) images.push(img.dataset.src);
-  });
-
-  // 详情图
-  const detailImages = document.querySelectorAll('#description img, .detail-content img');
-  detailImages.forEach(img => {
-    if (img.src) images.push(img.src);
-    if (img.dataset.src) images.push(img.dataset.src);
-  });
-
-  return images;
+  return extractImagesFromSelectors(
+    '.tb-booth img, .tb-thumb img, #J_ImgBooth img, #description img, .detail-content img'
+  );
 }
 
-/**
- * 提取京东特定图片
- */
 function extractJDImages() {
-  const images = [];
-
-  // 主图轮播
-  const mainImages = document.querySelectorAll('#spec-list img, .spec-items img, #preview img');
-  mainImages.forEach(img => {
-    if (img.src) images.push(img.src);
-    if (img.dataset.src) images.push(img.dataset.src);
-  });
-
-  // 详情图
-  const detailImages = document.querySelectorAll('.detail-content img, #detail img');
-  detailImages.forEach(img => {
-    if (img.src) images.push(img.src);
-    if (img.dataset.src) images.push(img.dataset.src);
-  });
-
-  return images;
+  return extractImagesFromSelectors(
+    '#spec-list img, .spec-items img, #preview img, .detail-content img, #detail img'
+  );
 }
 
-/**
- * 提取中国制造网特定图片
- */
 function extractMadeInChinaImages() {
-  const images = [];
-
-  // 主图轮播
-  const mainImages = document.querySelectorAll('.pic-scroll img, .product-img img, .img-main img');
-  mainImages.forEach(img => {
-    if (img.src) images.push(img.src);
-    if (img.dataset.src) images.push(img.dataset.src);
-    if (img.dataset.original) images.push(img.dataset.original);
-  });
-
-  // 详情图
-  const detailImages = document.querySelectorAll('.detail-desc img, .product-detail img');
-  detailImages.forEach(img => {
-    if (img.src) images.push(img.src);
-    if (img.dataset.src) images.push(img.dataset.src);
-    if (img.dataset.original) images.push(img.dataset.original);
-  });
-
-  return images;
+  return extractImagesFromSelectors(
+    '.pic-scroll img, .product-img img, .img-main img, .detail-desc img, .product-detail img'
+  );
 }
 
 /**
- * 提取页面中的视频
- * @returns {Promise<Array>} 视频列表
+ * 提取页面中的直链视频。
  */
 async function extractVideos() {
   const videos = [];
   const seenUrls = new Set();
 
-  // 1. 提取 <video> 标签
-  const videoElements = document.querySelectorAll('video');
-  videoElements.forEach(video => {
-    const url = video.src || video.currentSrc;
-    if (url && !seenUrls.has(url)) {
-      videos.push({
-        url,
-        type: 'video',
-        poster: video.poster || '',
-        width: video.videoWidth || 0,
-        height: video.videoHeight || 0
-      });
-      seenUrls.add(url);
-    }
+  const addVideo = (rawUrl, type = 'video', poster = '', width = 0, height = 0) => {
+    const url = normalizeMediaUrl(rawUrl);
+    if (!url || seenUrls.has(url)) return;
 
-    // 提取 <source> 标签
-    const sources = video.querySelectorAll('source');
-    sources.forEach(source => {
-      const url = source.src;
-      if (url && !seenUrls.has(url)) {
-        videos.push({
-          url,
-          type: 'video',
-          poster: video.poster || '',
-          width: video.videoWidth || 0,
-          height: video.videoHeight || 0
-        });
-        seenUrls.add(url);
-      }
+    videos.push({
+      url,
+      type,
+      poster: normalizeMediaUrl(poster) || '',
+      width: Number(width) || 0,
+      height: Number(height) || 0
+    });
+    seenUrls.add(url);
+  };
+
+  document.querySelectorAll('video').forEach(video => {
+    addVideo(
+      video.currentSrc || video.getAttribute('src'),
+      'video',
+      video.getAttribute('poster'),
+      video.videoWidth,
+      video.videoHeight
+    );
+
+    video.querySelectorAll('source').forEach(source => {
+      addVideo(
+        source.getAttribute('src'),
+        source.getAttribute('type') || 'video',
+        video.getAttribute('poster'),
+        video.videoWidth,
+        video.videoHeight
+      );
     });
   });
 
-  // 2. 提取阿里系视频
   if (isAlibabaSite()) {
-    const aliVideos = extractAlibabaVideos();
-    aliVideos.forEach(url => {
-      if (!seenUrls.has(url)) {
-        videos.push({ url, type: 'alibaba-video' });
-        seenUrls.add(url);
-      }
-    });
+    extractAlibabaVideos().forEach(url => addVideo(url, 'alibaba-video'));
   }
-
-  // 3. 提取淘宝视频
   if (isTaobaoSite()) {
-    const taobaoVideos = extractTaobaoVideos();
-    taobaoVideos.forEach(url => {
-      if (!seenUrls.has(url)) {
-        videos.push({ url, type: 'taobao-video' });
-        seenUrls.add(url);
-      }
-    });
+    extractTaobaoVideos().forEach(url => addVideo(url, 'taobao-video'));
   }
-
-  // 4. 提取中国制造网视频
   if (isMadeInChinaSite()) {
-    const micVideos = extractMadeInChinaVideos();
-    micVideos.forEach(url => {
-      if (!seenUrls.has(url)) {
-        videos.push({ url, type: 'made-in-china-video' });
-        seenUrls.add(url);
-      }
-    });
+    extractMadeInChinaVideos().forEach(url => addVideo(url, 'made-in-china-video'));
   }
 
   return videos;
 }
 
-/**
- * 提取阿里巴巴视频
- */
 function extractAlibabaVideos() {
-  const videos = [];
-
-  // 阿里巴巴国际站视频
-  const videoContainers = document.querySelectorAll('[data-video-url], [data-video-src]');
-  videoContainers.forEach(el => {
-    const url = el.dataset.videoUrl || el.dataset.videoSrc;
-    if (url) videos.push(url);
-  });
-
-  return videos;
+  return extractDataVideoUrls('[data-video-url], [data-video-src]', ['videoUrl', 'videoSrc']);
 }
 
-/**
- * 提取淘宝视频
- */
 function extractTaobaoVideos() {
-  const videos = [];
-
-  // 淘宝商品视频
-  const videoElements = document.querySelectorAll('[data-video], [data-video-url]');
-  videoElements.forEach(el => {
-    const url = el.dataset.video || el.dataset.videoUrl;
-    if (url) videos.push(url);
-  });
-
-  return videos;
+  return extractDataVideoUrls('[data-video], [data-video-url]', ['video', 'videoUrl']);
 }
 
-/**
- * 提取中国制造网视频
- */
 function extractMadeInChinaVideos() {
-  const videos = [];
+  return extractDataVideoUrls('[data-video-url], [data-video-src]', ['videoUrl', 'videoSrc']);
+}
 
-  // 视频标签
-  const videoElements = document.querySelectorAll('video');
-  videoElements.forEach(video => {
-    if (video.src) videos.push(video.src);
-    const sources = video.querySelectorAll('source');
-    sources.forEach(source => {
-      if (source.src) videos.push(source.src);
-    });
+function extractDataVideoUrls(selector, keys) {
+  const urls = [];
+  document.querySelectorAll(selector).forEach(element => {
+    const value = keys.map(key => element.dataset[key]).find(Boolean);
+    if (value) urls.push(value);
   });
-
-  // data 属性视频
-  const dataVideoElements = document.querySelectorAll('[data-video-url], [data-video-src]');
-  dataVideoElements.forEach(el => {
-    const url = el.dataset.videoUrl || el.dataset.videoSrc;
-    if (url) videos.push(url);
-  });
-
-  return videos;
+  return urls;
 }
 
 /**
- * 将图片 URL 转换为高清版本
- * @param {string} url - 原始 URL
- * @returns {string} 高清 URL
+ * 将相对地址归一化，并移除常见平台的缩略图后缀。
  */
-function getHighResUrl(url) {
-  if (!url || url.startsWith('data:')) return null;
+function getHighResUrl(rawUrl) {
+  const normalizedUrl = normalizeMediaUrl(rawUrl);
+  if (!normalizedUrl) return null;
 
-  let cleanUrl = url;
+  const url = new URL(normalizedUrl);
+  const hostname = url.hostname.toLowerCase();
 
-  // 阿里系图片处理
-  if (url.includes('alicdn.com')) {
-    // 移除尺寸后缀，如 _300x300.jpg
-    cleanUrl = url.replace(/_\d+x\d+\./, '.');
-    // 移除缩略图参数
-    cleanUrl = cleanUrl.split('?')[0];
+  if (isHost(hostname, 'made-in-china.com') && isTemplateImage(url.href)) {
+    return null;
   }
 
-  // 亚马逊图片处理
-  if (url.includes('amazon.com') || url.includes('ssl-images-amazon')) {
-    cleanUrl = url.replace(/\._.*?_\./, '.');
+  if (isHost(hostname, 'alicdn.com') || isHost(hostname, 'taobaocdn.com')) {
+    url.pathname = url.pathname
+      .replace(
+        /(\.(?:avif|gif|jpe?g|png|webp))_\d+x\d+[^./]*\.(?:avif|gif|jpe?g|png|webp)(?:_\.webp)?$/i,
+        '$1'
+      )
+      .replace(/_\d+x\d+(?=\.[^./]+$)/i, '');
+    url.searchParams.delete('x-oss-process');
   }
 
-  // 淘宝/天猫图片处理
-  if (url.includes('taobaocdn.com')) {
-    // 移除尺寸参数，如 _400x400.jpg
-    cleanUrl = cleanUrl.replace(/_\d+x\d+\./, '.');
-    cleanUrl = cleanUrl.split('?')[0];
+  if (isHost(hostname, 'amazon.com') ||
+      isHost(hostname, 'media-amazon.com') ||
+      isHost(hostname, 'ssl-images-amazon.com')) {
+    url.pathname = url.pathname.replace(/\._[^/]+_\.(?=[^./]+$)/, '.');
   }
 
-  // 京东图片处理
-  if (url.includes('jd.com') || url.includes('360buyimg.com')) {
-    // 移除尺寸后缀，获取原图
-    cleanUrl = url.replace(/!.*$/, '');
+  if (isHost(hostname, 'jd.com') || isHost(hostname, '360buyimg.com')) {
+    url.pathname = url.pathname.replace(/!.*$/, '');
   }
 
-  // 中国制造网图片处理
-  if (url.includes('made-in-china.com')) {
-    // 过滤模板图片
-    if (isTemplateImage(url)) {
-      return null;
-    }
-    // 移除尺寸参数，如 _300x300.jpg
-    cleanUrl = url.replace(/_\d+x\d+\./, '.');
-    // 移除缩略图标记
-    cleanUrl = cleanUrl.replace(/\/s_/, '/');
+  if (isHost(hostname, 'made-in-china.com')) {
+    url.pathname = url.pathname
+      .replace(/_\d+x\d+(?=\.[^./]+$)/i, '')
+      .replace(/\/s_/, '/');
   }
 
-  return cleanUrl;
+  return url.href;
 }
 
-/**
- * 判断是否为模板图片（非产品图）
- * @param {string} url - 图片 URL
- * @returns {boolean}
- */
+function normalizeMediaUrl(value) {
+  if (typeof value !== 'string') return null;
+  const trimmedValue = value.trim();
+  if (!trimmedValue || trimmedValue.startsWith('data:')) return null;
+
+  try {
+    const url = new URL(trimmedValue, document.baseURI);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    url.hash = '';
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
 function isTemplateImage(url) {
-  // Made-in-China 模板图特征
   const templatePatterns = [
-    '/template/',
-    '/common/',
-    '/static/',
-    '/icon/',
-    '/logo/',
-    '/banner/',
-    '/bg_',
-    '/background',
-    'placeholder',
-    'default-image',
-    'no-image'
+    '/template/', '/common/', '/static/', '/icon/', '/logo/', '/banner/',
+    '/bg_', '/background', 'placeholder', 'default-image', 'no-image'
   ];
-
-  return templatePatterns.some(pattern => url.toLowerCase().includes(pattern));
+  const normalizedUrl = url.toLowerCase();
+  return templatePatterns.some(pattern => normalizedUrl.includes(pattern));
 }
 
-/**
- * 获取图片真实尺寸
- * @param {string} url - 图片 URL
- * @returns {Promise<Object>} {width, height}
- */
-function getImageDimensions(url) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = () => resolve(null);
-    img.src = url;
+function getImageDimensions(url, timeoutMs = IMAGE_LOAD_TIMEOUT_MS) {
+  return new Promise(resolve => {
+    const image = new Image();
+    let settled = false;
+
+    const finish = dimensions => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      image.onload = null;
+      image.onerror = null;
+      resolve(dimensions);
+    };
+
+    const timeoutId = setTimeout(() => finish(null), Math.max(1, timeoutMs));
+    image.decoding = 'async';
+    image.onload = () => finish({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onerror = () => finish(null);
+    image.src = url;
   });
 }
 
-/**
- * 检查图片是否通过筛选条件
- */
-function passFilters(dimensions, filters) {
+function normalizeFilters(filters = {}) {
+  const normalizeDimension = value => {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(10000, Math.max(0, Math.round(number))) : 0;
+  };
+
+  return {
+    minWidth: normalizeDimension(filters.minWidth),
+    minHeight: normalizeDimension(filters.minHeight),
+    square: filters.square === true,
+    landscape: filters.landscape === true,
+    portrait: filters.portrait === true
+  };
+}
+
+function passFilters(dimensions, filters = {}) {
   const { width, height } = dimensions;
-  const { minWidth, minHeight, square, landscape, portrait } = filters;
+  const normalizedFilters = normalizeFilters(filters);
 
-  // 尺寸过滤
-  if (width < minWidth || height < minHeight) return false;
-
-  // 过滤过小图片（可能是图标、logo）
+  if (width < normalizedFilters.minWidth || height < normalizedFilters.minHeight) return false;
   if (width < 200 || height < 200) return false;
 
-  // 比例过滤
-  if (square || landscape || portrait) {
-    const ratio = width / height;
-    const isSquare = ratio >= 0.9 && ratio <= 1.1;
-    const isLandscape = ratio > 1.1;
-    const isPortrait = ratio < 0.9;
+  const hasRatioFilter = normalizedFilters.square || normalizedFilters.landscape || normalizedFilters.portrait;
+  if (!hasRatioFilter) return true;
 
-    if (square && !isSquare) return false;
-    if (landscape && !isLandscape) return false;
-    if (portrait && !isPortrait) return false;
+  const ratio = width / height;
+  const matchesSquare = normalizedFilters.square && ratio >= 0.9 && ratio <= 1.1;
+  const matchesLandscape = normalizedFilters.landscape && ratio > 1.1;
+  const matchesPortrait = normalizedFilters.portrait && ratio < 0.9;
+
+  return matchesSquare || matchesLandscape || matchesPortrait;
+}
+
+async function mapWithConcurrency(items, limit, mapper) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex++;
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+    }
   }
 
-  return true;
+  const workerCount = Math.min(limit, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+function isAlibabaSite() {
+  const hostname = window.location.hostname;
+  return isHost(hostname, 'alibaba.com') ||
+    isHost(hostname, '1688.com') ||
+    isHost(hostname, 'aliexpress.com');
+}
+
+function isAlibabaAccessBlocked() {
+  const hostname = window.location.hostname.toLowerCase();
+  const pathname = window.location.pathname || '';
+  if (/^(login|passport|accounts)\./.test(hostname) && isHost(hostname, 'alibaba.com')) {
+    return true;
+  }
+  if (pathname.includes('/_____tmd_____/')) return true;
+
+  const loginJumpLink = typeof document.getElementById === 'function'
+    ? document.getElementById('a-link')
+    : null;
+  return Boolean(loginJumpLink?.href?.includes('login.alibaba.com'));
+}
+
+function isTaobaoSite() {
+  const hostname = window.location.hostname;
+  return isHost(hostname, 'taobao.com') || isHost(hostname, 'tmall.com');
+}
+
+function isJDSite() {
+  return isHost(window.location.hostname, 'jd.com');
+}
+
+function isMadeInChinaSite() {
+  return isHost(window.location.hostname, 'made-in-china.com');
+}
+
+function isHost(hostname, domain) {
+  const normalizedHostname = hostname.toLowerCase();
+  return normalizedHostname === domain || normalizedHostname.endsWith(`.${domain}`);
 }
