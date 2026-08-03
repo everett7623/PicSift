@@ -1,216 +1,71 @@
-# PicSift v0.0.1 - Beta 版本发布
+# PicSift v0.0.5 发布说明
 
-**发布日期**: 2026-07-31  
-**版本**: v0.0.1 (Beta)  
-**作者**: Everett Labs ([https://everettlabs.dev/](https://everettlabs.dev/))
+发布日期：2026-08-03
 
-> ⚠️ **测试版本**：这是初始 Beta 版本，功能可能不稳定，欢迎反馈问题。
+发布状态：Beta
 
----
+仓库：[everett7623/PicSift](https://github.com/everett7623/PicSift)
 
-## 📦 发布内容
+## 下载
 
-### 核心功能
-- ✅ 图片提取（主图、详情图、懒加载、背景图）
-- ✅ 视频提取（`<video>` 标签、data 属性）
-- ✅ 图片筛选（尺寸、比例）
-- ✅ 批量下载（自动分类文件夹）
-- ✅ Tab 切换（图片/视频）
-- ✅ 深色主题界面
+- [GitHub Release](https://github.com/everett7623/PicSift/releases/tag/v0.0.5)
+- Release 资源：`PicSift-v0.0.5.zip`
+- SHA256：`EBCCD53E459F1277B9C283B852951C09E8A3FC6FEF2F9044ACBEB4BC5F04702A`
 
-### 支持的网站（11 个）
+下载后先解压，再从 `chrome://extensions/` 加载包含 `manifest.json` 的目录。
 
-#### 完整优化（6 个）
-| 网站 | 图片提取 | 视频提取 | 高清还原 |
-|------|:--------:|:--------:|:--------:|
-| Alibaba.com | ✅ | ✅ | ✅ |
-| 1688.com | ✅ | ✅ | ✅ |
-| Taobao.com | ✅ | ✅ | ✅ |
-| Tmall.com | ✅ | ✅ | ✅ |
-| JD.com | ✅ | ❌ | ✅ |
-| Made-in-China.com | ✅ | ✅ | ✅ |
+## 本次发布
 
-#### 通用支持（5 个）
-- Amazon.com
-- AliExpress.com
-- eBay.com
-- Shopee.com
-- 其他电商网站
+### Alibaba 提取修复
 
----
+- 支持页面元数据、已加载资源和内嵌结构化数据中的图片 URL。
+- 兼容 Alicdn 新版缩略图后缀。
+- 登录或安全验证拦截时显示明确提示。
 
-## 📊 项目统计
+### 全屏工作台修复
 
-```
-代码行数:      941 行
-  - content.js:   478 行（图片/视频提取）
-  - popup.js:     331 行（用户界面）
-  - background.js: 122 行（下载管理）
-  - 其他代码:      10 行
+- 工作台刷新、扩展重载后恢复最近使用的来源商品页。
+- 避免把工作台自身错误绑定为来源页。
+- 移除固定最小窗口尺寸，补充响应式布局。
+- 修复上百张图片时网格行被压缩、卡片重叠的问题。
 
-配置文件:        1 个（manifest.json）
-样式文件:        1 个（popup.css）
-HTML 文件:       2 个（popup.html + QUICK_START.html）
-图标文件:        4 个（16/32/48/128px）
-文档文件:        7 个
-工具脚本:        2 个
-```
+### ZIP 打包下载
 
----
+- 两张及以上图片在浏览器本地生成单个 ZIP。
+- 只触发一次浏览器下载。
+- 失败图片保持选择，支持减少数量后重试。
+- 设置 20 秒单资源超时和 256 MB 总大小上限。
 
-## 🎯 技术特性
+### 文档与开源发布
 
-### 1. 高清原图还原
+- 完善 README、安装、使用、测试、发布和更新日志。
+- 增加当前工作台项目截图。
+- 增加 MIT License。
+- 发布仓库改为 Public。
 
-| 网站 | 缩略图 URL | 原图 URL |
-|------|-----------|----------|
-| 阿里系 | `xxx_300x300.jpg` | `xxx.jpg` |
-| 京东 | `xxx.jpg!q70` | `xxx.jpg` |
-| 淘宝 | `xxx_400x400.jpg` | `xxx.jpg` |
-| 中国制造网 | `/s_/xxx.jpg` | `/xxx.jpg` |
+## 安装包内容
 
-### 2. 智能筛选
-- 最小尺寸过滤（宽度/高度）
-- 图片比例过滤（方图/横图/竖图）
-- 自动过滤小图标（< 200x200px）
-
-### 3. 安全防护
-- XSS 防护（DOM API）
-- URL 协议验证（HTTP/HTTPS only）
-- 输入验证
-
-### 4. 批量下载
-- 自动创建文件夹（`域名_日期`）
-- 分类目录（`images/`、`videos/`）
-- 文件命名（`序号_时间戳.扩展名`）
-
----
-
-## 📁 文件结构
-
-```
-PicSift/
-├── manifest.json              # Chrome 插件配置
-├── icons/                     # 插件图标
-│   ├── icon16.png
-│   ├── icon32.png
-│   ├── icon48.png
-│   └── icon128.png
-├── popup/                     # 用户界面
-│   ├── popup.html
-│   ├── popup.js
-│   └── popup.css
-├── content/                   # 内容脚本
-│   └── content.js
-├── background/                # 后台服务
-│   └── background.js
-├── README.md                  # 项目说明
-├── CLAUDE.md                  # 开发指南
-├── INSTALL.md                 # 安装指南
-├── TESTING.md                 # 测试文档
-├── CHANGELOG.md               # 更新日志
-├── PROJECT_SUMMARY.md         # 项目总结
-├── QUICK_START.html           # 快速开始（可视化）
-└── test.sh                    # 自动测试脚本
+```text
+manifest.json
+background/background.js
+content/content.js
+popup/popup.html
+popup/popup.css
+popup/popup.js
+icons/icon16.png
+icons/icon32.png
+icons/icon48.png
+icons/icon128.png
 ```
 
----
+发布 ZIP 只包含运行扩展所需文件，不包含测试、源码生成器和开发文档。
 
-## 🚀 安装方法
+## 已知限制
 
-### 开发者模式安装
+- 商品页面结构变化可能导致特定站点选择器失效。
+- 登录、验证码或地区访问限制必须由用户在来源页处理。
+- 图片服务器拒绝跨域请求时，部分文件无法加入 ZIP。
+- M3U8、DASH、DRM 等流媒体暂不支持。
+- 当前版本未上架 Chrome Web Store，需要开发者模式安装。
 
-```
-1. 打开 Chrome: chrome://extensions/
-2. 开启"开发者模式"（右上角）
-3. 点击"加载已解压的扩展程序"
-4. 选择目录: D:\EvenFrank\Workspace\Plugins\Google\PicSift
-```
-
-### 测试网站
-
-```
-• Alibaba.com - 图片/视频提取
-• 1688.com - 图片/视频提取
-• Made-in-China.com - 图片/视频提取
-• Taobao.com - 图片提取
-• JD.com - 图片提取
-```
-
----
-
-## 🔄 更新记录
-
-### v0.0.1 (2026-07-31) - Beta
-
-#### 新增
-- 商品图片提取功能
-- 商品视频提取功能
-- 图片尺寸/比例筛选
-- 批量下载功能
-- 支持 11 个电商网站
-- 6 个网站特殊优化
-
-#### 优化
-- Made-in-China.com 视频提取支持
-- 高清原图 URL 还原算法
-- XSS 安全防护
-- 用户界面（Tab 切换、深色主题）
-
----
-
-## 🗺️ 版本规划
-
-### v0.1.0（下一版本）
-- 图片去重功能
-- URL 列表导出
-- 性能优化
-
-### v1.0.0（正式版）
-- 完整测试通过
-- Chrome Web Store 发布
-- 用户反馈修复
-
----
-
-## 📖 文档
-
-| 文档 | 说明 |
-|------|------|
-| `README.md` | 功能介绍、使用说明 |
-| `INSTALL.md` | 安装步骤、常见问题 |
-| `TESTING.md` | 测试流程、调试方法 |
-| `CLAUDE.md` | 架构设计、开发指南 |
-| `CHANGELOG.md` | 版本更新日志 |
-| `PROJECT_SUMMARY.md` | 项目完成总结 |
-| `QUICK_START.html` | 可视化快速开始 |
-
----
-
-## 👨‍💻 作者信息
-
-**Everett Labs**
-
-- 🌐 网站：[https://everettlabs.dev/](https://everettlabs.dev/)
-- ☕ 请我喝咖啡：[https://everettlabs.dev/coffee/](https://everettlabs.dev/coffee/)
-
----
-
-## 📝 许可证
-
-MIT License
-
----
-
-## 🎉 致谢
-
-感谢使用 PicSift！如果这个插件对你有帮助，欢迎：
-- ⭐ Star 项目
-- ☕ 请我喝咖啡
-- 📣 分享给朋友
-
----
-
-**项目状态**: ✅ 生产就绪  
-**项目目录**: `D:\EvenFrank\Workspace\Plugins\Google\PicSift`  
-**在线演示**: 加载到 Chrome 后即可使用
+完整版本历史见 [CHANGELOG.md](CHANGELOG.md)。
