@@ -128,4 +128,6 @@ bash test.sh
 
 [MIT License](LICENSE) © 2026 Everett Labs
 
+作者：everettlabs · 邮箱：[everett7623@gmail.com](mailto:everett7623@gmail.com)
+
 项目主页：[Everett Labs](https://everettlabs.dev/)
