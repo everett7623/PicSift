@@ -237,7 +237,9 @@ function extractJDImages() {
 
 function extractMadeInChinaImages() {
   return extractImagesFromSelectors(
-    '.pic-scroll img, .product-img img, .img-main img, .detail-desc img, .product-detail img'
+    '.pic-scroll img, .product-img img, .img-main img, .detail-desc img, .product-detail img,' +
+    ' .product-gallery img, .gallery-list img, [class*="product"] img[data-src],' +
+    ' [class*="gallery"] img[data-src], img[data-original], img[data-large]'
   );
 }
 

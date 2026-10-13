@@ -789,6 +789,17 @@ h2 {
   text-decoration: none;
 }
 
+.maker-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: auto;
+}
+
+.maker-links .maker-link {
+  margin-right: 0;
+}
+
 .maker-link:hover {
   color: var(--accent);
 }

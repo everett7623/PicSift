@@ -667,7 +667,8 @@ function createImageCard(image, index) {
   const imageElement = document.createElement('img');
   imageElement.src = image.url;
   imageElement.alt = `商品图片 ${index + 1}`;
-  imageElement.loading = 'lazy';
+  // 结果卡片需要立即展示，避免懒加载导致首屏出现空白卡片。
+  imageElement.loading = 'eager';
   imageElement.decoding = 'async';
   imageElement.draggable = false;
 
