@@ -2,24 +2,30 @@
 
 ## 自动化检查
 
-项目无安装和构建步骤。在仓库根目录执行：
+项目无安装和构建步骤。在仓库根目录执行一条命令即可跑完全部检查：
 
 ```bash
-node --check content/content.js
-node --check popup/popup.js
-node --check background/background.js
-node --test tests/*.test.js
-python -m json.tool manifest.json
 bash test.sh
 ```
 
-Windows PowerShell 可使用 Git Bash：
+`test.sh` 依次检查：必需文件是否齐全、`manifest.json` 是否为合法 JSON、**版本一致性**（manifest 与 popup.html 徽标、测试断言、README、CLAUDE、CHANGELOG 必须全部对齐）、三个源文件的语法、以及 Node 单元测试。
+
+Windows PowerShell 下用 Git Bash 调用：
 
 ```powershell
 & 'C:\Program Files\Git\bin\bash.exe' test.sh
 ```
 
-自动化测试覆盖 URL 标准化、高清图后缀、筛选、ZIP 结构、CRC32、文件名、来源标签页恢复和版本一致性。
+需要单独运行某一项时：
+
+```bash
+node --check content/content.js                                    # 单文件语法检查
+node --test tests/*.test.js                                        # 全部单元测试
+node --test --test-name-pattern "ZIP builder" tests/core.test.js   # 只跑单个测试
+python -m json.tool manifest.json                                  # 只校验 manifest
+```
+
+单元测试覆盖 URL 标准化、高清图后缀、筛选、ZIP 结构、CRC32、文件名、来源标签页恢复和版本断言。
 
 ## 本地加载
 
@@ -107,11 +113,12 @@ Windows PowerShell 可使用 Git Bash：
 
 ## 发布前检查
 
-- [ ] `manifest.json`、工作台版本徽标和测试断言一致。
-- [ ] README、USAGE、INSTALL、RELEASE、CHANGELOG 已更新。
+- [ ] 已执行 `bash scripts/bump-version.sh <新版本>` 同步全部版本号。
+- [ ] CHANGELOG.md 已添加本版本条目。
+- [ ] README、USAGE 内容已随功能变化更新。
 - [ ] 工作台截图反映当前 UI。
-- [ ] 自动化检查全部通过。
+- [ ] `bash test.sh` 全部通过（含版本一致性检查）。
 - [ ] Release ZIP 根目录直接包含 `manifest.json`。
 - [ ] ZIP 内图标路径为 `icons/icon*.png`。
-- [ ] ZIP SHA256 已写入发布说明。
+- [ ] ZIP SHA256 已写入 GitHub Release 说明。
 - [ ] GitHub Release 标签与 manifest 版本一致。

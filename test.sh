@@ -29,6 +29,7 @@ required_files=(
   'icons/icon48.png'
   'icons/icon128.png'
   'AGENTS.md'
+  'CLAUDE.md'
 )
 
 printf 'Required files\n'
@@ -55,6 +56,36 @@ elif command -v python3 >/dev/null 2>&1; then
   fi
 else
   fail 'Python is required for manifest validation'
+fi
+
+# manifest.json 的 version 是唯一事实来源，其余位置必须与之一致。
+# 漏改任何一处都会让 node --test 或 Chrome 加载出现版本不符，这里提前拦截。
+printf '\nVersion consistency\n'
+manifest_version="$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' manifest.json | head -1)"
+
+check_version() {
+  local file="$1"
+  local expected="$2"
+  local label="$3"
+
+  if [[ ! -f "$file" ]]; then
+    fail "$label ($file is missing)"
+  elif grep -qF -- "$expected" "$file"; then
+    pass "$label"
+  else
+    fail "$label should contain: $expected"
+  fi
+}
+
+if [[ -z "$manifest_version" ]]; then
+  fail 'manifest.json has no readable version field'
+else
+  pass "manifest.json version is $manifest_version"
+  check_version 'popup/popup.html' ">v${manifest_version}<" 'popup/popup.html version badge'
+  check_version 'tests/core.test.js' "assert.equal(manifest.version, '${manifest_version}')" 'tests/core.test.js version assertion'
+  check_version 'README.md' "当前版本：\`v${manifest_version}\`" 'README.md version line'
+  check_version 'CLAUDE.md' "当前版本 \`v${manifest_version}\`" 'CLAUDE.md version line'
+  check_version 'CHANGELOG.md' "## v${manifest_version} (" 'CHANGELOG.md release entry'
 fi
 
 printf '\nJavaScript syntax\n'

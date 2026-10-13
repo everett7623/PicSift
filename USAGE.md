@@ -125,4 +125,4 @@ PicSift/<域名_日期>/videos/<序号_时间戳>.<扩展名>
 
 必须先选择至少一个项目。下载过程中按钮会暂时禁用，防止重复提交。
 
-安装问题见 [INSTALL.md](INSTALL.md)，开发者排查见 [TESTING.md](TESTING.md)。
+安装问题见 [README 安装章节](README.md#安装)，开发者排查见 [TESTING.md](TESTING.md)。

@@ -1,6 +1,9 @@
 from PIL import Image, ImageDraw, ImageFont
 import os
 
+# 输出到脚本所在目录，保证从任意工作目录运行结果一致。
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
 # 配置
 sizes = [16, 32, 48, 128]
 bg_color = (9, 11, 16)  # #090B10
@@ -39,7 +42,7 @@ for size in sizes:
 
     # 保存
     filename = f'icon{size}.png'
-    img.save(filename)
+    img.save(os.path.join(script_dir, filename))
     print(f'Generated {filename}')
 
 print('All icons created successfully!')

@@ -42,29 +42,60 @@ PicSift 是一个开源的 Chrome Manifest V3 扩展，用于从电商商品页�
 
 ## 安装
 
-### 从 Release 安装
+支持 Chrome、Edge 等基于 Chromium 且支持 Manifest V3 的浏览器。扩展管理页地址：Chrome 为 `chrome://extensions/`，Edge 为 `edge://extensions/`。
+
+### 方式一：安装 Release 包
 
 1. 打开 [Releases](https://github.com/everett7623/PicSift/releases/latest)，下载 `PicSift-v0.0.6.zip`。
-2. 解压 ZIP。
-3. 打开 `chrome://extensions/` 并启用“开发者模式”。
-4. 点击“加载已解压的扩展程序”，选择解压后的目录。
-5. 将 PicSift 固定到浏览器工具栏。
+2. 将 ZIP **解压到一个长期保留的目录**，不要解压到临时目录后删除 —— 扩展加载后会持续读取该目录。
+3. 打开扩展管理页并启用"开发者模式"。
+4. 点击"加载已解压的扩展程序"。
+5. 选择**直接包含 `manifest.json` 的目录**。
+6. 在工具栏扩展菜单中把 PicSift 固定出来。
 
-### 从源码安装
+Chrome 不支持双击 ZIP 直接安装未上架扩展，必须先解压。
+
+### 方式二：从源码安装
 
 ```bash
 git clone https://github.com/everett7623/PicSift.git
 ```
 
-然后在 `chrome://extensions/` 中加载仓库根目录。详细步骤见 [INSTALL.md](INSTALL.md)。
+在扩展管理页选择仓库根目录即可。项目不需要 `npm install`，也没有编译步骤。
+
+### 安装校验
+
+- 扩展名称显示为"PicSift - 商品图片提取器"。
+- 版本显示为 `0.0.6`。
+- 工具栏显示绿色 P 图标。
+- 点击图标后打开全屏工作台。
+- 在支持站点打开时，工作台右上角显示来源域名。
+
+### 更新扩展
+
+Release 安装：下载并解压新版本，用新文件替换原目录（或加载新的版本目录），然后在扩展管理页点击 PicSift 卡片上的"重新加载"。
+
+源码安装：`git pull` 之后同样需要点击"重新加载"。
+
+扩展源码不会热更新，替换文件后必须重新加载，再刷新已经打开的工作台标签页。
+
+### 安装常见问题
+
+**"清单文件缺失或不可读取"** —— 选错了目录，应选择直接包含 `manifest.json` 的那一层，而不是它的上级目录。
+
+**点击图标没有打开工作台** —— 先在扩展管理页点击"重新加载"；仍然无效则打开 PicSift 的 Service Worker 检查视图查看报错，并确认 `popup/popup.html`、`background/background.js` 存在。
+
+**版本号显示为旧版** —— 替换文件后没有点击"重新加载"，或者工作台标签页没有刷新。
+
+**当前页面不可提取** —— 确认页面域名在上方[支持站点](#支持站点)表内，且是普通 HTTP(S) 商品页。`chrome://`、浏览器设置页和本地文件页无法注入内容脚本。
 
 ## 快速使用
 
 1. 打开受支持的商品详情页，等待主图和详情图加载。
 2. 点击 PicSift 图标，扩展会在新标签页打开全屏工作台。
-3. 设置最小尺寸和图片比例，点击“提取本页图片”。
+3. 设置最小尺寸和图片比例，点击"提取本页图片"。
 4. 单击卡片选择，双击查看原图。
-5. 选择多张图片后点击“打包下载”；单张图片或视频直接下载。
+5. 选择多张图片后点击"打包下载"；单张图片或视频直接下载。
 
 完整说明和故障排查见 [USAGE.md](USAGE.md)。
 
@@ -85,15 +116,10 @@ PicSift 不包含服务端，不上传提取结果、浏览记录或下载内容
 项目无构建步骤、无运行时第三方依赖。
 
 ```bash
-node --check content/content.js
-node --check popup/popup.js
-node --check background/background.js
-node --test tests/*.test.js
-python -m json.tool manifest.json
 bash test.sh
 ```
 
-修改代码后，需要在 `chrome://extensions/` 重新加载扩展。详细回归用例见 [TESTING.md](TESTING.md)。
+单条命令与单个测试的运行方式见 [TESTING.md](TESTING.md)，架构约束见 [CLAUDE.md](CLAUDE.md)。修改代码后需要在扩展管理页重新加载扩展。
 
 ## 架构
 
@@ -108,11 +134,9 @@ bash test.sh
 
 ## 项目文档
 
-- [安装指南](INSTALL.md)
 - [使用指南](USAGE.md)
 - [测试指南](TESTING.md)
 - [更新日志](CHANGELOG.md)
-- [发布说明](RELEASE.md)
 - [开发说明](CLAUDE.md)
 
 ## 路线图
