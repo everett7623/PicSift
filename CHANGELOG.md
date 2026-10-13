@@ -2,6 +2,30 @@
 
 本文件记录每个版本的变更。发布产物信息（Release ZIP 名称、SHA256、下载链接）只写在对应的 [GitHub Release](https://github.com/everett7623/PicSift/releases) 页面，不在仓库内维护。
 
+## v0.0.7 (2026-10-13)
+
+发布状态：Beta
+
+### 问题修复
+
+1. **结果卡片立即加载**
+   - 结果网格图片从懒加载改为立即加载，避免首屏出现空白卡片
+2. **中国制造网选择器扩展**
+   - 覆盖 product-gallery、gallery-list 等更多商品图容器
+   - 支持 data-original、data-large 懒加载属性的高清图还原
+
+### 界面调整
+
+- 工作台底栏改为官网与 GitHub 双项目链接
+
+### 文档与工程
+
+- 精简文档结构，移除零入口的重复文档，细节统一收敛到 CLAUDE.md
+- 新增 `scripts/bump-version.sh` 一键同步全部版本号
+- `test.sh` 增加跨文件版本一致性检查，拦截漏改的版本号
+
+---
+
 ## v0.0.6 (2026-08-03)
 
 发布状态：Beta

@@ -373,8 +373,8 @@ test('manifest permits automatic source-page reinjection', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(repositoryRoot, 'manifest.json'), 'utf8'));
   const popupHtml = fs.readFileSync(path.join(repositoryRoot, 'popup/popup.html'), 'utf8');
 
-  assert.equal(manifest.version, '0.0.6');
-  assert.match(popupHtml, />v0\.0\.6</);
+  assert.equal(manifest.version, '0.0.7');
+  assert.match(popupHtml, />v0\.0\.7</);
   assert.match(popupHtml, /id="minWidth" value="750"/);
   assert.match(popupHtml, /id="minHeight" value="750"/);
   assert.match(popupHtml, /id="resultFilters"/);

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-PicSift 是 Chrome Manifest V3 扩展，原生 JavaScript / HTML / CSS，**无构建步骤、无 npm 依赖、无 node_modules**。仓库根目录本身就是可通过"加载已解压的扩展程序"直接加载的扩展目录。当前版本 `v0.0.6`。
+PicSift 是 Chrome Manifest V3 扩展，原生 JavaScript / HTML / CSS，**无构建步骤、无 npm 依赖、无 node_modules**。仓库根目录本身就是可通过"加载已解压的扩展程序"直接加载的扩展目录。当前版本 `v0.0.7`。
 
 [AGENTS.md](AGENTS.md) 是给其他 AI 工具的英文入口，只做简要概述并指回本文件，不重复维护细节。
 

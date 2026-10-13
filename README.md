@@ -6,7 +6,7 @@
 
 PicSift 是一个开源的 Chrome Manifest V3 扩展，用于从电商商品页筛选、预览并下载图片和直链视频。它面向外贸、电商运营、设计素材整理等需要批量保存商品媒体的场景。
 
-当前版本：`v0.0.6`（Beta）
+当前版本：`v0.0.7`（Beta）
 
 ![PicSift 全屏媒体工作台（演示数据）](docs/screenshots/dashboard.png)
 
@@ -46,7 +46,7 @@ PicSift 是一个开源的 Chrome Manifest V3 扩展，用于从电商商品页�
 
 ### 方式一：安装 Release 包
 
-1. 打开 [Releases](https://github.com/everett7623/PicSift/releases/latest)，下载 `PicSift-v0.0.6.zip`。
+1. 打开 [Releases](https://github.com/everett7623/PicSift/releases/latest)，下载 `PicSift-v0.0.7.zip`。
 2. 将 ZIP **解压到一个长期保留的目录**，不要解压到临时目录后删除 —— 扩展加载后会持续读取该目录。
 3. 打开扩展管理页并启用"开发者模式"。
 4. 点击"加载已解压的扩展程序"。
@@ -66,7 +66,7 @@ git clone https://github.com/everett7623/PicSift.git
 ### 安装校验
 
 - 扩展名称显示为"PicSift - 商品图片提取器"。
-- 版本显示为 `0.0.6`。
+- 版本显示为 `0.0.7`。
 - 工具栏显示绿色 P 图标。
 - 点击图标后打开全屏工作台。
 - 在支持站点打开时，工作台右上角显示来源域名。
