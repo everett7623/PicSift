@@ -125,6 +125,34 @@ h1 {
   font-size: 11px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--text-faint);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.header-link:hover {
+  color: var(--accent);
+  background: rgba(85, 230, 165, 0.08);
+}
+
 .site-badge {
   display: flex;
   align-items: center;
@@ -772,6 +800,7 @@ h2 {
 .selection-summary {
   display: grid;
   min-width: 62px;
+  margin-right: auto;
   gap: 1px;
   color: var(--text-faint);
   font-size: 9px;
@@ -780,28 +809,6 @@ h2 {
 .selection-summary strong {
   color: var(--text);
   font-size: 13px;
-}
-
-.maker-link {
-  margin-right: auto;
-  color: var(--text-faint);
-  font-size: 10px;
-  text-decoration: none;
-}
-
-.maker-links {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-right: auto;
-}
-
-.maker-links .maker-link {
-  margin-right: 0;
-}
-
-.maker-link:hover {
-  color: var(--accent);
 }
 
 .download-btn {
